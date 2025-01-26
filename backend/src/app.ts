@@ -1,7 +1,10 @@
 import express, { Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-
+import userRouter from './routes/user.routes'
+import chatRouter from './routes/chat.routes'
+import messageRouter from './routes/messages.routes'
+import notificationRouter from './routes/notifications.routes'
 const app = express();
 
 // CORS middleware to handle cross-origin requests
@@ -30,13 +33,12 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// routes
-// import userRouter from './routes/user.routes.js'
-
-// route declaration
 // router ab seperate kar di hai isliye app.get ki jagah app.use ka istamal karna padega
-// app.use("/api/v1/users",userRouter)
+app.use("/api/v1/users", userRouter)
+app.use("/api/v1/chats", chatRouter)
+app.use("/api/v1/messages", messageRouter)
+app.use("/api/v1/notifications", notificationRouter)
 // https://localhost:8000/api/v1/users/register
 // https://localhost:8000/api/v1/users/login
 // . ....
-export {app};
+export { app };
