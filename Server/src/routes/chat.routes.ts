@@ -3,7 +3,6 @@ import { verifyJWT } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-
 router.route("/").post((req, res) => {
     console.log("chat created")
 });
