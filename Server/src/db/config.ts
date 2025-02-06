@@ -4,8 +4,9 @@ import dotenv from "dotenv";
 // Load environment variables from .env file
 dotenv.config();
 
+console.log(process.env.MONGODB_URI)
 // Get the MongoDB URI from environment variables
-const dbURI = process.env.MONGODB_URI || "mongodb://localhost:27017/your-database-name";
+const dbURI = process.env.MONGODB_URI || "";
 
 // Function to connect to MongoDB
 const connectDB = async (): Promise<void> => {
@@ -19,4 +20,4 @@ const connectDB = async (): Promise<void> => {
     }
 };
 
-export {connectDB};
+export {connectDB}

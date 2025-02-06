@@ -34,10 +34,10 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // router ab seperate kar di hai isliye app.get ki jagah app.use ka istamal karna padega
-app.use("/api/v1/users", userRouter)
-app.use("/api/v1/chats", chatRouter)
-app.use("/api/v1/messages", messageRouter)
-app.use("/api/v1/notifications", notificationRouter)
+// app.use("/api/v1/users", userRouter)
+// app.use("/api/v1/chats", chatRouter)
+// app.use("/api/v1/messages", messageRouter)
+// app.use("/api/v1/notifications", notificationRouter)
 // https://localhost:8000/api/v1/users/register
 // https://localhost:8000/api/v1/users/login
 // . ....
