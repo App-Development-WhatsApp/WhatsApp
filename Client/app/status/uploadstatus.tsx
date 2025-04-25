@@ -150,7 +150,7 @@ export default function UploadStatus() {
             <Video
               source={{ uri: item.uri }}
               style={styles.videoThumb}
-              resizeMode="cover"
+              ResizeMode="cover"
               isMuted
               shouldPlay={false}
             />
