@@ -76,8 +76,26 @@ export const getDB = async () => {
       FOREIGN KEY (caller_jid) REFERENCES users (jid),
       FOREIGN KEY (receiver_jid) REFERENCES users (jid)
     );
+    
+    -- Communities table
+CREATE TABLE IF NOT EXISTS communities (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT,
+  image TEXT,
+  description TEXT,
+  last_time TEXT
+);
+
+-- Community members table
+CREATE TABLE IF NOT EXISTS community_members (
+  community_id INTEGER,
+  member_jid TEXT,
+  PRIMARY KEY (community_id, member_jid),
+  FOREIGN KEY (community_id) REFERENCES communities (id),
+  FOREIGN KEY (member_jid) REFERENCES users (jid)
+);
   `);
-  
+
 
   return dbInstance;
 };

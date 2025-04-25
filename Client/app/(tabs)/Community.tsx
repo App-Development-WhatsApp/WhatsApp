@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   Text,
   View,
@@ -13,39 +13,23 @@ import { useFocusEffect } from "@react-navigation/native";
 import * as FileSystem from "expo-file-system";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-
-const fileUri = FileSystem.documentDirectory + "communities.json";
+import { deleteCommunityById, getAllCommunities } from "@/Database/ChatQuery";
+import { CommunityItem } from "@/types/ChatsType";
 
 export default function Communities() {
-  const [communities, setCommunities] = useState([]);
+  const communities = useRef<CommunityItem[]>([]);
   const router = useRouter();
 
   const loadCommunities = async () => {
     try {
-      const fileInfo = await FileSystem.getInfoAsync(fileUri);
-      if (fileInfo.exists) {
-        const content = await FileSystem.readAsStringAsync(fileUri);
-        setCommunities(JSON.parse(content || "[]"));
-      } else {
-        await FileSystem.writeAsStringAsync(fileUri, JSON.stringify([]));
-      }
+      const community_info: CommunityItem[] = await getAllCommunities();
+      communities.current = community_info;
     } catch (error) {
       console.error("Error loading communities:", error);
     }
   };
 
-  const saveCommunities = async (newList: any) => {
-    try {
-      const json = JSON.stringify(newList ?? []);
-      await FileSystem.writeAsStringAsync(fileUri, json);
-      setCommunities(newList ?? []);
-    } catch (error) {
-      console.error("Error saving communities:", error);
-    }
-  };
-  
-
-  const deleteCommunity = ({indexToDelete}:{indexToDelete:any}) => {
+  const deleteCommunity = ({ indexToDelete }: { indexToDelete: any }) => {
     Alert.alert(
       "Delete Community",
       "Are you sure you want to delete this community?",
@@ -54,14 +38,20 @@ export default function Communities() {
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => {
-            const newList = communities.filter((_, i) => i !== indexToDelete);
-            saveCommunities(newList);
-          },          
+          onPress: async () => {
+            const result = await deleteCommunityById(communities.current[indexToDelete].id);
+            if (result) {
+              communities.current.splice(indexToDelete, 1);
+              console.log("Community deleted successfully");
+            } else {
+              console.log("Failed to delete community");
+            }
+          },
         },
       ]
     );
   };
+
 
   useEffect(() => {
     loadCommunities();
@@ -73,22 +63,16 @@ export default function Communities() {
     }, [])
   );
 
-  const renderCommunity = ({ item, index } : {item:any, index:any}) => (
+  const renderCommunity = ({ item, index }: { item: any, index: any }) => (
     <TouchableOpacity
       onPress={() =>
-        router.push({
-          pathname: "/Communities/CommunityScreen",
-          params: {
-            photo: item.photo || null,
-            name: item.name,
-            description: item.description || "Welcome to your community!",
-          },
-        })
+        // Here open chat Box at bottom to write message to community
+        console.log("Open community chat box")
       }
     >
       <View style={styles.communityBox}>
         <View style={styles.communityHeader}>
-          {item.photo ? (
+          {item.image ? (
             <Image source={{ uri: item.photo }} style={styles.communityImage} />
           ) : (
             <Ionicons name="people" size={32} color="white" style={styles.communityIcon} />
@@ -131,10 +115,10 @@ export default function Communities() {
       </TouchableOpacity>
 
       <FlatList
-        data={communities}
+        data={communities.current}
         keyExtractor={(item, index) => index.toString()}
         renderItem={renderCommunity}
-        contentContainerStyle={communities.length === 0 && { flexGrow: 1 }}
+        contentContainerStyle={communities.current.length === 0 && { flexGrow: 1 }}
         ListEmptyComponent={
           <View style={styles.emptyContent}>
             <Text style={{ color: "#888", textAlign: "center", marginTop: 50 }}>
@@ -225,5 +209,5 @@ const styles = StyleSheet.create({
   },
   messageTitle: { color: "white", fontWeight: "bold", flex: 1, marginLeft: 8 },
   messageSubtitle: { color: "#ccc", marginLeft: 28 },
-  time: { color: "#aaa", fontSize: 12 },
+  time: { color: "#aaa", fontSize: 12 },
 });
