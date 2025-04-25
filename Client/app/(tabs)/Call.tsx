@@ -62,7 +62,6 @@ const CallsScreen = () => {
             />
 
             <Text style={styles.callStatus}>{item.last_call_status}</Text>
-            {/* Status will be rejected incoming accepted */}
           </View>
         )}
       </View>
