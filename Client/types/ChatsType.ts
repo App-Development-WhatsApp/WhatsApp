@@ -56,3 +56,13 @@ export interface UserItem {
     description: string;
     last_time:string
   }
+
+  export type UserWithCallDetails = {
+    id:number,
+    name: string;
+    image: string;
+    phone: string;
+    jid: string;
+    last_call_type: string | null; // null if no call type is found
+    last_call_status: string | null; // null if no call status is found
+  };

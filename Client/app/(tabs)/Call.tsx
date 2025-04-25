@@ -1,61 +1,92 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { GetUsersInCalls } from '@/Database/ChatQuery'; // Assuming this fetches users from the database
+import { UserItem, UserWithCallDetails } from '@/types/ChatsType';
+import { useRouter } from 'expo-router';
 
-const demoData = [
+const demoData: UserWithCallDetails[] = [
   {
+    id: 1,
     jid: 'user_1',
     name: 'Alice Johnson',
     image: 'https://randomuser.me/api/portraits/women/1.jpg',
+    phone: "9045770801",
     last_call_type: 'audio',
     last_call_status: 'accepted',
   },
   {
+    id: 2,
     jid: 'user_2',
     name: 'Bob Smith',
     image: 'https://randomuser.me/api/portraits/men/2.jpg',
+    phone: "9045770801",
     last_call_type: 'video',
     last_call_status: 'rejected',
   },
   {
+    id: 3,
     jid: 'user_3',
     name: 'Charlie Brown',
     image: 'https://randomuser.me/api/portraits/men/3.jpg',
+    phone: "9045770801",
     last_call_type: 'audio',
     last_call_status: 'missed',
   },
   {
+    id: 4,
     jid: 'user_4',
     name: 'Diana Prince',
     image: 'https://randomuser.me/api/portraits/women/4.jpg',
+    phone: "9045770801",
     last_call_type: 'video',
     last_call_status: 'accepted',
   },
 ];
 
 const CallsScreen = () => {
-  const [users, setUsers] = useState<any[]>([]);
+  const router=useRouter();
+  const [users, setUsers] = useState<UserWithCallDetails[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setUsers(demoData);
+    try {
+      const data: UserWithCallDetails[] = await GetUsersInCalls();
+      setUsers(data); // Set users fetched from the database
+    } catch (err) {
+      console.error(err);
+    } finally {
       setRefreshing(false);
-    }, 1000);
+    }
   };
 
   useEffect(() => {
     const fetchUsers = async () => {
-      setTimeout(() => {
-        setUsers(demoData);
+      try {
+        // const data = await GetUsersInCalls();
+        // setUsers(data); // Fetch users on component mount
+        setUsers(demoData)
         setLoading(false);
-      }, 1000);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        setLoading(false);
+      }
     };
 
     fetchUsers();
   }, []);
+
+  const handleCalling = async (user: UserItem) => {
+    console.log("Calling")
+    router.push({
+      pathname: "/call",
+      params: {
+        User: JSON.stringify(user), // Must be stringified if object
+      },
+    });
+  };
 
   if (loading || users.length === 0) {
     return (
@@ -67,7 +98,7 @@ const CallsScreen = () => {
     );
   }
 
-  const renderItem = ({ item }: { item: any }) => (
+  const renderItem = ({ item }: { item: UserWithCallDetails }) => (
     <TouchableOpacity key={item.jid} style={styles.callItem}>
       <Image
         source={{ uri: item.image || 'https://example.com/avatar.jpg' }}
@@ -92,20 +123,32 @@ const CallsScreen = () => {
           </View>
         )}
       </View>
-      {item.last_call_type === 'audio' ? (
-        <Ionicons name="call-outline" size={28} color="green" />
-      ) : (
-        <MaterialIcons name="video-call" size={30} color="green" />
-      )}
+      <TouchableOpacity
+        onPress={() =>
+          handleCalling({
+            id: item.id,
+            jid: item.jid,
+            name: item.name,
+            image: item.image,
+            phone: item.phone,
+          })
+        }
+      >
+        {item.last_call_type === 'audio' ? (
+          <Ionicons name="call-outline" size={28} color="green" />
+        ) : (
+          <MaterialIcons name="video-call" size={30} color="green" />
+        )}
+      </TouchableOpacity>
     </TouchableOpacity>
-  );  
+  );
 
   return (
     <View style={styles.container}>
       <FlatList
         data={users}
         renderItem={renderItem}
-        keyExtractor={(item, index) => item.jid || index.toString()}
+        keyExtractor={(item) => item.jid}
         contentContainerStyle={styles.list}
         refreshing={refreshing}
         onRefresh={onRefresh}

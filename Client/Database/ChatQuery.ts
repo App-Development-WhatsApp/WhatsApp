@@ -1,4 +1,4 @@
-import { ChatItem, UserItem,CommunityItem } from "@/types/ChatsType";
+import { ChatItem, UserItem,CommunityItem, UserWithCallDetails } from "@/types/ChatsType";
 import { getDB } from "./ChatDatabase";
 
 type InsertMessageParams = {
@@ -325,12 +325,16 @@ export const UpdateCallEndTimeById = async (id: number, end_time: string, durati
   }
 };
 
-export const GetUsersInCalls = async () => {
+export const GetUsersInCalls = async (): Promise<UserWithCallDetails[]> => {
   const db = await getDB();
   try {
-    const result = await db.getAllAsync(`
+    const result: UserWithCallDetails[] = await db.getAllAsync(`
       SELECT 
-        u.*, 
+        u.id,
+        u.name,
+        u.image,
+        u.phone,
+        u.jid, 
         (
           SELECT c.call_type
           FROM calls c
@@ -354,12 +358,12 @@ export const GetUsersInCalls = async () => {
       GROUP BY u.jid
     `);
 
-    console.log('Fetched users involved in calls with last call type and status:', result);
+    console.log('Fetched users involved in calls with call details:', result);
     return result;
   } catch (error) {
     console.error('Error fetching users from calls:', error);
-    return [];
-  }
+    return [];
+  }
 };
 
 export const GetCallHistoryByUser = async (jid: string) => {
