@@ -1,7 +1,7 @@
 // app/index.tsx
 import { getUser } from '@/Services/LocallyData';
 import { Link, useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Dimensions, Image } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
@@ -9,16 +9,20 @@ const { width } = Dimensions.get('window');
 
 export default function IndexPage() {
   const router = useRouter();
+  const [isloading, setLoading] = useState(false)
 
   useEffect(() => {
     const checkUser = async () => {
       const user = await getUser();
       if (user) {
+        console.log(user)
         router.push('/(tabs)');
       }
     };
+    setLoading(true)
     checkUser();
-  }, []);
+    setLoading(false)
+  }, [router])
 
   return (
     <View style={styles.container}>

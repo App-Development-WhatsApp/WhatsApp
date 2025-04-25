@@ -16,12 +16,11 @@ import { createCommunity, getAllUsers } from '@/Database/ChatQuery';
 import showToast from '@/utils/ToastHandler';
 import { UserItem } from '@/types/ChatsType';
 
-const fileUri = "";
 
 export default function CreateCommunity() {
   const router = useRouter();
   const navigation = useNavigation();
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageUri, setImageUri] = useState<string>("");
   const [name, setName] = useState('');
   const [description, setDescription] = useState(
     'Hi everyone! This community is for members to chat in topic-based groups and get important announcements.'
@@ -30,6 +29,7 @@ export default function CreateCommunity() {
   const last_time = useRef<string>(new Date().toISOString());
   const users = useRef<UserItem[]>([])
   const [openMemberSection, setopenMemberSection] = useState(false)
+  const [isloading, setLoading] = useState(false)
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -65,21 +65,24 @@ export default function CreateCommunity() {
 
   const saveCommunity = async () => {
     if (!name.trim()) {
-      Alert.alert('Please enter a community name');
       showToast('error', 'bottom', `Name Missing`, 'Enter a name for the community');
       return;
     }
+    console.log(name, imageUri,description,last_time,membersJids  )
+    setLoading(true)
     try {
       await AddCommunity({
         name,
-        image: imageUri || fileUri,
+        image: imageUri,
         description,
         last_time: last_time.current,
         memberJids: membersJids.current,
       });
+      setLoading(false)
     } catch (err) {
       console.error('Saving error:', err);
       showToast('error', 'bottom', `Error`, 'Failed to create community');
+      setLoading(false)
     }
   };
   useEffect(() => {
@@ -178,7 +181,7 @@ export default function CreateCommunity() {
                       source={
                         user.image
                           ? { uri: user.image }
-                          : require('../../assets/images/profile.png')
+                          : require('../../assets/images/blank.jpeg')
                       }
                       style={{ width: 40, height: 40, borderRadius: 20, marginRight: 10 }}
                     />

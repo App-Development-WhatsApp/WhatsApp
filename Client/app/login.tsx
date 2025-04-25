@@ -20,11 +20,12 @@ export default function SignupPage() {
     const checkUser = async () => {
       const user = await getUser();
       if (user) {
+        console.log(user)
         router.push('/(tabs)');
       }
     };
     checkUser();
-  }, [])
+  }, [router])
 
   const handleSignup = async () => {
     if (!usernameRef.current || !phoneNumberRef.current || !image) {
