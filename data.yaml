@@ -1,0 +1,13 @@
+path: /content/gdrive/MyDrive/AssignMent2/
+
+train: train/images
+val: valid/images
+test: test/images
+
+nc: 4
+
+names:
+  0: ex
+  1: he
+  2: ma
+  3: se
