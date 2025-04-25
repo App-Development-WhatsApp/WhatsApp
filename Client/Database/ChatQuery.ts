@@ -1,4 +1,4 @@
-import { ChatItem, UserItem } from "@/types/ChatsType";
+import { ChatItem, UserItem,CommunityItem } from "@/types/ChatsType";
 import { getDB } from "./ChatDatabase";
 
 type InsertMessageParams = {
@@ -90,8 +90,6 @@ export const insertMessage = async ({
   });
 };
 
-
-// Function to update the message status after successful sending or failure
 export const updateMessageStatus = async (messageId: number, newStatus: string) => {
   const db = await getDB();
 
@@ -118,7 +116,6 @@ export const updateMessageStatus = async (messageId: number, newStatus: string) 
     }
   );
 };
-
 
 export const getChats = async (): Promise<ChatItem[]> => {
   const db: any = await getDB();
@@ -161,6 +158,7 @@ export const getChats = async (): Promise<ChatItem[]> => {
     return [];
   }
 };
+
 export const getAllUsers = async (): Promise<UserItem[]> => {
   try {
     const db: any = await getDB(); // No need to await if getDB is not async
@@ -178,6 +176,7 @@ export const getAllUsers = async (): Promise<UserItem[]> => {
     return [];
   }
 };
+
 export const getUserInfoByJid = async (jid: string): Promise<UserItem | null> => {
   try {
     const db = await getDB();
@@ -200,6 +199,7 @@ export const getUserInfoByJid = async (jid: string): Promise<UserItem | null> =>
     return null;
   }
 };
+
 export const getMessages = async (chatId: any) => {
   const db = await getDB();
 
@@ -266,7 +266,6 @@ export const SaveUser = async (user: UserItem) => {
   }
 };
 
-
 export const SaveCall = async (call: {
   caller_jid: string;
   receiver_jid: string;
@@ -325,7 +324,6 @@ export const UpdateCallEndTimeById = async (id: number, end_time: string, durati
     console.error(`Error updating call ID ${id}:`, error);
   }
 };
-
 
 export const GetUsersInCalls = async () => {
   const db = await getDB();
@@ -387,5 +385,117 @@ export const GetCallHistoryByUser = async (jid: string) => {
   } catch (error) {
     console.error(`Error fetching call history for ${jid}:`, error);
     return [];
+  }
+};
+
+export const createCommunity = async (
+  name: string,
+  image: string,
+  description: string,
+  last_time: string,
+  memberJids: string[]
+): Promise<CommunityItem | null> => {
+  const db = await getDB();
+  try {
+    const result = await db.runAsync(
+      `INSERT INTO communities (name, image, description, last_time) VALUES (?, ?, ?, ?)`,
+      [name, image, description, last_time]
+    );
+
+    const communityId = result.lastInsertRowId;
+
+    for (const jid of memberJids) {
+      await db.runAsync(
+        `INSERT OR IGNORE INTO community_members (community_id, member_jid) VALUES (?, ?)`,
+        [communityId, jid]
+      );
+    }
+
+    const community = await db.getFirstAsync(
+      `SELECT id, name, image, description, last_time FROM communities WHERE id = ?`,
+      communityId
+    );
+
+    return community;
+
+  } catch (error) {
+    console.error('Error creating community:', error);
+    return null;
+  }
+};
+
+export const getCommunityMembersDetails = async (communityId: number) => {
+  const db = await getDB();
+  try {
+    const members = await db.getAllAsync(`
+      SELECT u.image, u.name, u.phone
+      FROM users u
+      INNER JOIN community_members cm ON u.jid = cm.member_jid
+      WHERE cm.community_id = ?
+    `, [communityId]);
+
+    return members;
+  } catch (error) {
+    console.error('Failed to fetch community members:', error);
+    return [];
+  }
+};
+
+export const getAllCommunities = async (): Promise<CommunityItem[]>=> {
+  const db = await getDB();
+  try {
+    const communities = await db.getAllAsync(`
+      SELECT id, name, image, description, last_time
+      FROM communities
+      ORDER BY last_time DESC
+    `);
+
+    return communities;
+  } catch (error) {
+    console.error('Failed to fetch communities:', error);
+    return [];
+  }
+};
+
+export const deleteCommunityById = async (communityId: number): Promise<boolean> => {
+  const db = await getDB();
+  try {
+    await db.execAsync('BEGIN TRANSACTION');
+
+    // Delete all members of the community
+    await db.runAsync(
+      `DELETE FROM community_members WHERE community_id = ?`,
+      communityId
+    );
+
+    // Delete the community itself
+    await db.runAsync(
+      `DELETE FROM communities WHERE id = ?`,
+      communityId
+    );
+
+    await db.execAsync('COMMIT');
+    return true;
+  } catch (error) {
+    console.error('Failed to delete community and its references:', error);
+    await db.execAsync('ROLLBACK');
+    return false;
+  }
+};
+
+export const getCommunityById = async (communityId: number): Promise<CommunityItem | null> => {
+  const db = await getDB();
+  try {
+    const community = await db.getFirstAsync(
+      `SELECT id, name, image, description, last_time
+       FROM communities
+       WHERE id = ?`,
+      communityId
+    );
+
+    return community || null;
+  } catch (error) {
+    console.error('Failed to fetch community by ID:', error);
+    return null;
   }
 };

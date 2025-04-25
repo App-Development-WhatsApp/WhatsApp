@@ -1,25 +1,35 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   Image,
-  Pressable,
   StyleSheet,
   TouchableOpacity,
   Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
 import { useRouter, useNavigation } from 'expo-router';
 import { useLayoutEffect } from 'react';
 import { AntDesign, Feather } from '@expo/vector-icons';
+import { createCommunity, getAllUsers } from '@/Database/ChatQuery';
+import showToast from '@/utils/ToastHandler';
+import { UserItem } from '@/types/ChatsType';
 
 const fileUri = "";
 
 export default function CreateCommunity() {
   const router = useRouter();
   const navigation = useNavigation();
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState(
+    'Hi everyone! This community is for members to chat in topic-based groups and get important announcements.'
+  );
+  const membersJids = useRef<string[]>([]);
+  const last_time = useRef<string>(new Date().toISOString());
+  const users = useRef<UserItem[]>([])
+  const [openMemberSection, setopenMemberSection] = useState(false)
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -30,12 +40,6 @@ export default function CreateCommunity() {
     });
   }, [navigation]);
 
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState(
-    'Hi everyone! This community is for members to chat in topic-based groups and get important announcements.'
-  );
-
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -45,39 +49,47 @@ export default function CreateCommunity() {
       setImageUri(result.assets[0].uri);
     }
   };
+  const AddCommunity = async (newList: { name: string, image: string, description: string, last_time: string, memberJids: string[] }) => {
+    try {
+      const newCommunity = await createCommunity(newList.name, newList.image, newList.description, newList.last_time, newList.memberJids);
+      if (newCommunity) {
+        router.push('/(tabs)/Community');
+        showToast('success', 'top', `Success`, 'Community created successfully');
+      } else {
+        showToast('error', 'bottom', `Error`, 'Failed to create community');
+      }
+    } catch (error) {
+      console.error("Error saving communities:", error);
+    }
+  };
 
   const saveCommunity = async () => {
     if (!name.trim()) {
       Alert.alert('Please enter a community name');
+      showToast('error', 'bottom', `Name Missing`, 'Enter a name for the community');
       return;
     }
-
-    const newCommunity = {
-      id: Date.now().toString(),
-      name,
-      description,
-      imageUri,
-    };
-
     try {
-      const fileExists = await FileSystem.getInfoAsync(fileUri);
-      let communities = [];
-
-      if (fileExists.exists) {
-        const existing = await FileSystem.readAsStringAsync(fileUri);
-        communities = JSON.parse(existing);
-      }
-
-      communities.push(newCommunity);
-      await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(communities));
-
-      Alert.alert('Community created!');
-      router.back(); // Navigate back
+      await AddCommunity({
+        name,
+        image: imageUri || fileUri,
+        description,
+        last_time: last_time.current,
+        memberJids: membersJids.current,
+      });
     } catch (err) {
       console.error('Saving error:', err);
-      Alert.alert('Error saving community');
+      showToast('error', 'bottom', `Error`, 'Failed to create community');
     }
   };
+  useEffect(() => {
+    if (openMemberSection) {
+      (async () => {
+        const fetchedUsers = await getAllUsers(); // Assume it returns a list of { id, name, image, phone }
+        users.current = fetchedUsers;
+      })();
+    }
+  }, [openMemberSection]);
 
   return (
     <View style={styles.container}>
@@ -108,6 +120,10 @@ export default function CreateCommunity() {
       />
       <Text style={styles.counter}>{name.length}/100</Text>
 
+      <TouchableOpacity onPress={() => setopenMemberSection(true)}>
+        <Text style={{ color: '#25D366', marginTop: 12 }}>+ Add Members</Text>
+      </TouchableOpacity>
+
       <TextInput
         multiline
         value={description}
@@ -121,6 +137,82 @@ export default function CreateCommunity() {
       <TouchableOpacity onPress={saveCommunity} style={styles.saveButton}>
         <AntDesign name="arrowright" size={28} color="white" />
       </TouchableOpacity>
+
+      {openMemberSection && (
+        <View style={{ marginTop: 20 }}>
+          <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold', marginBottom: 10 }}>
+            Select Members
+          </Text>
+
+          {users.current.length === 0 ? (
+            <Text style={{ color: '#888' }}>No users available</Text>
+          ) : (
+            users.current.map((user) => {
+              const isSelected = membersJids.current.includes(user.jid);
+
+              return (
+                <TouchableOpacity
+                  key={user.id}
+                  onPress={() => {
+                    if (isSelected) {
+                      membersJids.current = membersJids.current.filter(j => j !== user.jid);
+                    } else {
+                      membersJids.current.push(user.jid);
+                    }
+                    // Force re-render
+                    setopenMemberSection(prev => !prev);
+                    setopenMemberSection(prev => !prev);
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: 10,
+                    backgroundColor: '#333',
+                    borderRadius: 10,
+                    marginBottom: 8,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Image
+                      source={
+                        user.image
+                          ? { uri: user.image }
+                          : require('../../assets/images/profile.png')
+                      }
+                      style={{ width: 40, height: 40, borderRadius: 20, marginRight: 10 }}
+                    />
+                    <View>
+                      <Text style={{ color: 'white', fontSize: 16 }}>{user.name}</Text>
+                      <Text style={{ color: '#aaa', fontSize: 12 }}>{user.phone}</Text>
+                    </View>
+                  </View>
+
+                  {isSelected && (
+                    <AntDesign name="checkcircle" size={20} color="#25D366" />
+                  )}
+                </TouchableOpacity>
+              );
+            })
+          )}
+
+          <TouchableOpacity
+            onPress={() => setopenMemberSection(false)}
+            style={{
+              marginTop: 10,
+              backgroundColor: '#444',
+              padding: 10,
+              borderRadius: 10,
+              alignItems: 'center',
+            }}
+          >
+            <Text style={{ color: 'white' }}>Done Selecting Members</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+
+
     </View>
   );
 }
