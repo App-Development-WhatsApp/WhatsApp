@@ -33,3 +33,26 @@ export interface UserItem {
     fileName?: string;
     duration?: number;
   };
+
+  export interface MediaItem {
+    id: string;
+    uri: string;
+    type: 'image' | 'video';
+    duration?: number;
+    start?: number;
+    end?: number;
+    caption?: string;
+  }
+  
+  export interface UploadStatusParams {
+    media: MediaItem;
+    timestamp: string;
+  }
+
+  export type CommunityItem={
+    id:number;
+    name:string;
+    image:string;
+    description: string;
+    last_time:string
+  }

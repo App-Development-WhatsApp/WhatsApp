@@ -1,18 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
-  FlatList,
   Image,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 
 const statuses = [
   { id: '1', name: 'Add status', avatar: 'https://via.placeholder.com/150', isAdd: true },
-  { id: '2', name: 'Sahil...', avatar: 'https://via.placeholder.com/150', isAdd: false },
 ];
 
 const channels = [
@@ -37,20 +38,73 @@ const channels = [
 ];
 
 export default function UpdatesScreen() {
+  const [showPicker, setShowPicker] = useState(false);
+  const router = useRouter();
+
+  const openCamera = async () => {
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    setShowPicker(false);
+    if (!result.canceled) {
+      const asset = result.assets[0]; // Getting the first media asset
+      const uri = asset.uri;
+      const type = asset.type; // Type is either 'image' or 'video'
+
+      router.push({
+        pathname: '/status/uploadstatus',
+        params: { uri, type }, // Pass uri and type to the upload status page
+      });
+    }
+  };
+
+  const openGallery = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    setShowPicker(false);
+    if (!result.canceled) {
+      const asset = result.assets[0]; // Getting the first media asset
+      const uri = asset.uri;
+      const type = asset.type; // Type is either 'image' or 'video'
+      console.log('image:',uri)
+
+      router.push({
+        pathname: '/status/uploadstatus',
+        params: { uri: encodeURIComponent(uri), type }, // Pass uri and type to the upload status page
+      });
+      console.log(uri, type);
+    }
+  };
+
   const renderStatus = ({ item }: { item: any }) => (
-    <View style={styles.statusItem}>
-      <View style={styles.statusAvatarWrapper}>
-        <Image source={{ uri: item.avatar }} style={styles.statusAvatar} />
-        {item.isAdd && (
-          <View style={styles.addIcon}>
-            <Ionicons name="add-circle" size={20} color="#00ff6a" />
-          </View>
-        )}
+    <TouchableOpacity
+      onPress={() => {
+        if (item.isAdd) {
+          setShowPicker(true);
+        }
+      }}
+    >
+      <View style={styles.statusItem}>
+        <View style={styles.statusAvatarWrapper}>
+          <Image source={{ uri: item.avatar }} style={styles.statusAvatar} />
+          {item.isAdd && (
+            <View style={styles.addIcon}>
+              <Ionicons name="add-circle" size={20} color="#00ff6a" />
+            </View>
+          )}
+        </View>
+        <Text style={styles.statusName} numberOfLines={1}>
+          {item.name}
+        </Text>
       </View>
-      <Text style={styles.statusName} numberOfLines={1}>
-        {item.name}
-      </Text>
-    </View>
+    </TouchableOpacity>
   );
 
   const renderChannel = ({ item }: { item: any }) => (
@@ -91,6 +145,31 @@ export default function UpdatesScreen() {
       <TouchableOpacity style={styles.fab}>
         <Ionicons name="camera" size={24} color="white" />
       </TouchableOpacity>
+
+      {/* Picker Modal */}
+      <Modal
+        visible={showPicker}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modal}>
+            <Text style={styles.modalTitle}>Choose Option</Text>
+            <TouchableOpacity style={styles.modalButton} onPress={openCamera}>
+              <Ionicons name="camera" size={20} color="#00c853" />
+              <Text style={styles.modalButtonText}>Open Camera</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalButton} onPress={openGallery}>
+              <Ionicons name="image" size={20} color="#00c853" />
+              <Text style={styles.modalButtonText}>Upload from Gallery</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelButton} onPress={() => setShowPicker(false)}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -183,5 +262,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modal: {
+    backgroundColor: '#1e1e1e',
+    padding: 20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  modalTitle: {
+    color: 'white',
+    fontSize: 18,
+    marginBottom: 16,
+    fontWeight: '600',
+  },
+  modalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  modalButtonText: {
+    color: 'white',
+    fontSize: 16,
+    marginLeft: 12,
+  },
+  cancelButton: {
+    marginTop: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#ff5252',
+    fontSize: 16,
   },
 });
