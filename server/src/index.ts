@@ -4,9 +4,10 @@ import { Message } from "./model/user.model";
 import { env } from "./utils/Env";
 import http from "http";
 import { Server, Socket } from "socket.io";
+import { InsertMessageParams } from "./Types/type";
 
 // Message type
-interface Message {
+interface MessageType {
     senderId: string;
     receiverId: string;
     content: string;
@@ -14,10 +15,10 @@ interface Message {
     [key: string]: any;
 }
 
-
-
-const onlineUsers = new Map();
-const onlineSockets = new Map();
+// Mapping of userId -> socketId
+const onlineUsers = new Map<string, string>();
+// Mapping of socketId -> userId
+const onlineSockets = new Map<string, string>();
 
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
@@ -29,6 +30,7 @@ const io = new Server(httpServer, {
     allowEIO3: true,
 });
 
+// Extend Socket type
 declare module "socket.io" {
     interface Socket {
         userId?: string;
@@ -38,12 +40,13 @@ declare module "socket.io" {
 io.on("connection", (socket: Socket) => {
     console.log("Socket connected:", socket.id);
 
-    socket.on('sendMessage', async (messageData) => {
-        const { sender_jid, receiver_jid, message, fileUrls, fileTypes, oneTime } = messageData;
-        console.log(messageData)
+    socket.on('sendMessage', async (messageData: InsertMessageParams) => {
+        const { sender_jid, receiver_jid, type, message, fileUrls, fileTypes, oneTime, Sender_image, Sender_name } = messageData;
+        console.log(messageData);
+
         const newMessage = new Message({
-            sender_jid,
             receiver_jid,
+            sender_jid,
             message,
             fileUrls,
             fileTypes,
@@ -53,86 +56,87 @@ io.on("connection", (socket: Socket) => {
         });
 
         try {
-            const savedMessage = await newMessage.save();
-            const receiverSocketId = onlineUsers.get(message.receiver_jid);
-            const senderSocketId = onlineUsers.get(message.receiver_jid);
-            console.log(message, "real time cahtting")
+            // const savedMessage = await newMessage.save();
+            const receiverSocketId = onlineUsers.get(receiver_jid);
+
+            console.log(messageData, "real time chatting");
 
             if (receiverSocketId) {
-                console.log("Receiver is online, sending message:", message, " ----", receiverSocketId, senderSocketId);
+                console.log("Receiver is online, sending message:", messageData, " ----", receiverSocketId);
                 io.to(receiverSocketId).emit("receiveMessage", messageData);
             } else {
                 console.log("Receiver is offline, message saved as pending.");
             }
         } catch (error) {
-            console.error('Error saving message:', error);
+            console.error('Error sending message:', error);
             socket.emit('error', 'Failed to send message');
         }
     });
 
+    // socket.on("typing", async (props: { userid: string, friendId: string }) => {
+    //     console.log("Typing event:", props);
+    //     const receiverSocketId = onlineUsers.get(props.friendId);
+
+    //     if (receiverSocketId) {
+    //         console.log("Receiver is online, sending typing event to:", receiverSocketId);
+    //         io.to(receiverSocketId).emit("userTyping", props.userid);
+    //     }
+    // });
+
     socket.on("callIncoming", (callerId: string, callerName: string, callerImage: string, receiverId: string) => {
-        const receiverSocketIds = onlineUsers.get(receiverId);
-        console.log("Receiver socket IDs:", receiverSocketIds);
-        if (receiverSocketIds) {
-            receiverSocketIds.forEach((sockId: string) => {
-                io.to(sockId).emit("incomingCall", { callerId, callerName, callerImage });
-            });
+        const receiverSocketId = onlineUsers.get(receiverId);
+        console.log("Receiver socket ID:", receiverSocketId);
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit("incomingCall", { callerId, callerName, callerImage });
         } else {
             console.log("Receiver is offline, call not sent.");
         }
     });
 
-    socket.on('callAccepted', (callerId) => {
+    socket.on('callAccepted', (callerId: string) => {
         const callerSocketId = onlineUsers.get(callerId);
         if (callerSocketId) {
             io.to(callerSocketId).emit('callAccepted');
-            console.log(`Call accepted by receiver for caller ${callerId}`);
+            console.log(`Call accepted for caller ${callerId}`);
         }
     });
 
-    socket.on('callRejected', (callerId) => {
+    socket.on('callRejected', (callerId: string) => {
         const callerSocketId = onlineUsers.get(callerId);
         if (callerSocketId) {
             io.to(callerSocketId).emit('callRejected');
-            console.log(`Call rejected by receiver for caller ${callerId}`);
-        }
-    });
-    socket.on("cancelCall", (callerId: string,receiverId:string) => {
-        // id
-        const callerSocketId = onlineUsers.get(receiverId);
-        if (callerSocketId) {
-            io.to(callerSocketId).emit("cancelCall");
-            console.log(`Call cancelled for caller ${callerId}`);
-        }
-    });
-    socket.on("cutCall", (callerId: string,receiverId:string) => {
-        // id
-        const callerSocketId = onlineUsers.get(receiverId);
-        if (callerSocketId) {
-            io.to(callerSocketId).emit("cutCall");
-            console.log(`Call cut for caller ${callerId}`);
+            console.log(`Call rejected for caller ${callerId}`);
         }
     });
 
+    socket.on("cancelCall", (callerId: string, receiverId: string) => {
+        const receiverSocketId = onlineUsers.get(receiverId);
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit("cancelCall");
+            console.log(`Call cancelled from caller ${callerId}`);
+        }
+    });
+
+    socket.on("cutCall", (callerId: string, receiverId: string) => {
+        const receiverSocketId = onlineUsers.get(receiverId);
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit("cutCall");
+            console.log(`Call cut from caller ${callerId}`);
+        }
+    });
 
     socket.on("disconnect", () => {
         const userId = onlineSockets.get(socket.id);
         if (userId) {
-            const socketIds = onlineUsers.get(userId);
-            if (socketIds) {
-                socketIds.delete(socket.id);
-                if (socketIds.size === 0) {
-                    onlineUsers.delete(userId);
-                }
+            const socketId = onlineUsers.get(userId);
+            if (socketId === socket.id) {
+                onlineUsers.delete(userId);
             }
             onlineSockets.delete(socket.id);
             console.log(`User ${userId} disconnected (socket ID ${socket.id})`);
         }
     });
 });
-
-
-
 
 connectDB()
     .then(() => {
@@ -145,17 +149,3 @@ connectDB()
     .catch((error) => {
         console.error("MongoDB Connection Failed!!!", error);
     });
-
-
-
-// socket.on("typing", async ( props:any ) => {
-//   console.log("Typing event:", props);
-//   const receiverSocketIds = onlineUsers.get(props.friendId);
-//   console.log("Receiver socket IDs:", receiverSocketIds);
-//   if (receiverSocketIds) {
-//     // Receiver is online — send typing event
-//     receiverSocketIds.forEach((sockId) => {
-//       io.to(sockId).emit("userTyping",props.userid);
-//     });
-//   }
-// })
