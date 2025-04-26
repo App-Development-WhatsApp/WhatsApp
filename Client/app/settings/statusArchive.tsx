@@ -38,7 +38,7 @@ export default function StatusArchive() {
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: 'Settings',
+      title: 'Status Archive',
       headerStyle: { backgroundColor: '#25292e' },
       headerTintColor: '#fff',
       headerShadowVisible: false,
