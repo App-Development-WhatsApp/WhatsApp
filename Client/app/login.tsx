@@ -8,6 +8,7 @@ import { generateRandomId } from '@/utils/RandomValues';
 import { useRef } from 'react';
 import { login } from '@/Services/Api';
 import { getUser } from '@/Services/LocallyData';
+import showToast from '@/utils/ToastHandler';
 
 
 export default function SignupPage() {
@@ -20,7 +21,6 @@ export default function SignupPage() {
     const checkUser = async () => {
       const user = await getUser();
       if (user) {
-        console.log(user)
         router.push('/(tabs)');
       }
     };
@@ -63,10 +63,9 @@ export default function SignupPage() {
         );
         setImage(compressed.uri);
       } else {
-        console.log('Image picking was canceled');
       }
-    } catch (error) {
-      console.error('Error picking image:', error);
+    } catch (error: any) {
+      showToast("error", "bottom", "Error PickingImage", error.message)
     }
   };
 

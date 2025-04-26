@@ -148,7 +148,6 @@ export const updateMessageStatus = async (messageId: any, newStatus: string) => 
 
 export const getChats = async (): Promise<ChatItem[]> => {
   const db: any = await getDB();
-  console.log('Fetching chats...', db);
   try {
     const statement = await db.prepareAsync(`
       SELECT 
@@ -273,7 +272,6 @@ export const getMessages = async (chatId: string): Promise<MessageItem[]> => {
 
 export const SaveUser = async (user: UserItem) => {
   const db = await getDB();
-  console.log('Saving user:', user);
   try {
     const statement = await db.prepareAsync(`
       INSERT INTO users (jid, name, image, phone)
@@ -286,7 +284,6 @@ export const SaveUser = async (user: UserItem) => {
 
     try {
       await statement.executeAsync([user.jid, user.name, user.image, user.phone]);
-      console.log('User saved successfully:', user.jid);
       return user;
     } finally {
       await statement.finalizeAsync(); // Always clean up

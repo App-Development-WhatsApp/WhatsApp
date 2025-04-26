@@ -15,7 +15,6 @@ export default function IndexPage() {
     const checkUser = async () => {
       const user = await getUser();
       if (user) {
-        console.log(user)
         router.push('/(tabs)');
       }
     };

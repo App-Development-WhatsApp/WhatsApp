@@ -5,6 +5,7 @@ import CallBanner from '@/components/CallingBanner';
 import { useRouter } from 'expo-router';
 import { SaveCall, UpdateCallEndTimeById, UpdateCallStatus } from '@/Database/ChatQuery';
 import { InsertMessageParams } from '@/Database/ChatQuery';
+import { getUser } from '@/Services/LocallyData';
 
 interface ISocketContext {
   socket: Socket | null;
@@ -20,10 +21,10 @@ interface ISocketContext {
   UnregisterRejectCall: (callback: (CallerId: string) => void) => void;
   RegisterCancelCall: (callback: (CallerId: string) => void) => void;
   UnregisterCancelCall: (callback: (CallerId: string) => void) => void;
-  sendCancelCall: (callerId: string, receiverId: string) => void; 
-  RegisterCallEnded: (callback: (time:string) => void) => void;
-  UnregisterCallEnded: (callback: (time:string) => void) => void;
-  sendCallEnded: (cuttedBy:string, cuttedTo:string,time:any) => void
+  sendCancelCall: (callerId: string, receiverId: string) => void;
+  RegisterCallEnded: (callback: (time: string) => void) => void;
+  UnregisterCallEnded: (callback: (time: string) => void) => void;
+  sendCallEnded: (cuttedBy: string, cuttedTo: string, time: any) => void
 }
 
 const SocketContext = createContext<ISocketContext>({
@@ -33,14 +34,14 @@ const SocketContext = createContext<ISocketContext>({
   registerReceiveMessage: () => { },
   unregisterReceiveMessage: () => { },
   onPendingMessages: () => { },
-  sendIncomingCall: () => { }, 
+  sendIncomingCall: () => { },
   RegisterAcceptCall: () => { },
   UnregisterAcceptCall: () => { },
   RegisterRejectCall: () => { },
   UnregisterRejectCall: () => { },
   RegisterCancelCall: () => { },
   UnregisterCancelCall: () => { },
-  sendCancelCall: () => { }, 
+  sendCancelCall: () => { },
   RegisterCallEnded: () => { },
   UnregisterCallEnded: () => { },
   sendCallEnded: () => { }
@@ -52,7 +53,8 @@ export const useSocket = (): ISocketContext => useContext(SocketContext);
 export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const router = useRouter();
   const socketRef = useRef<Socket | null>(null);
-  const callData=useRef<any|null>(null)
+  const callData = useRef<any | null>(null)
+  const userRef = useRef<any | null>(null)
   const [globalMessages, setGlobalMessages] = useState<InsertMessageParams[]>([]);
   const [incomingCall, setIncomingCall] = useState<null | {
     callerId: string;
@@ -60,9 +62,23 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     callerImage: string;
   }>(null);
 
-  const handleAccept = async() => {
+  useEffect(() => {
+    const checkUser = async () => {
+      const user = await getUser();
+      if (!user) {
+        router.push('/login');
+      }
+      // showToast('success', 'top', `Hi ${user.username}`, 'Wellcome to Chat Screen');
+      userRef.current = user;
+    };
+    if (!userRef.current) {
+      checkUser();
+    }
+  }, []);
+
+  const handleAccept = async () => {
     // const result = await UpdateCallStatus(callData.current.id, 'Accepted');
-    if (socketRef.current 
+    if (socketRef.current
       // && result
     ) {
       socketRef.current.emit('callAccepted', incomingCall?.callerId);
@@ -76,13 +92,13 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       router.push({
         pathname: "/Call/acceptCall",
         params: {
-          User:JSON.stringify(User), 
+          User: JSON.stringify(User),
         },
       });
     }
   };
 
-  const handleReject = async() => {
+  const handleReject = async () => {
     const result = await UpdateCallStatus(callData.current.id, 'Rejected');
     if (socketRef.current
       && result
@@ -93,12 +109,12 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  const sendIncomingCall =async (callerId: string, callerName: string, callerImage: string, receiverId: string) => {
+  const sendIncomingCall = async (callerId: string, callerName: string, callerImage: string, receiverId: string) => {
     // const call=await SaveCall({caller_jid:callerId,receiver_jid:receiverId,call_type:'voice',call_status:'Calling',start_time:new Date().toISOString(),end_time:new Date().toISOString(),duration:0})
     if (
       // call && 
       socketRef.current) {
-        //  callData.current=call
+      //  callData.current=call
       const callData = {
         callerId,
         callerName,
@@ -109,7 +125,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
   const sendCancelCall = (callerId: string, receiverId: string) => {
-    console.log(callerId,receiverId,socketRef.current)
+    console.log(callerId, receiverId, socketRef.current)
     if (socketRef.current) {
       const callData = {
         callerId,
@@ -118,12 +134,12 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       socketRef.current.emit('cancelCall', callData);  // Emit the incoming call event
     }
   };
-  const sendCallEnded =async (cuttedBy:string, cuttedTo:string,time:any) => {
+  const sendCallEnded = async (cuttedBy: string, cuttedTo: string, time: any) => {
     // const update=await UpdateCallEndTimeById(callData.current.id,new Date().toISOString(), time);
     if (
       // update && 
       socketRef.current) {
-      socketRef.current.emit('CallEnded', cuttedBy,cuttedTo,time);  
+      socketRef.current.emit('CallEnded', cuttedBy, cuttedTo, time);
     }
   };
 
@@ -131,6 +147,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     socketRef.current?.emit('sendMessage', message);
   };
   const registerReceiveMessage = (callback: (message: InsertMessageParams) => void) => {
+    console.log("ehknjvvbjhughcjgjkllk")
     socketRef.current?.on('receiveMessage', callback);
   };
 
@@ -141,38 +158,38 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const onPendingMessages = (callback: (message: InsertMessageParams) => void) => {
     socketRef.current?.on('receivePendingMessage', callback);
   };
-  const RegisterAcceptCall = async(callback: (callerId: string) => void) => {
+  const RegisterAcceptCall = async (callback: (callerId: string) => void) => {
     // const result = await UpdateCallStatus(callData.current.id, 'Accepted');
     // if(result){
-      socketRef.current?.on('callAccepted', callback);
+    socketRef.current?.on('callAccepted', callback);
     // }
   };
   const UnregisterAcceptCall = (callback: (callerId: string) => void) => {
     socketRef.current?.off('callAccepted', callback);
   };
   const RegisterRejectCall = (callback: (callerId: string) => void) => {
-     // const result = await UpdateCallStatus(callData.current.id, 'Rejected');
+    // const result = await UpdateCallStatus(callData.current.id, 'Rejected');
     // if(result){
     socketRef.current?.on('callRejected', callback);
-        // }
+    // }
   };
   const UnregisterRejectCall = (callback: (callerId: string) => void) => {
     socketRef.current?.off('callRejected', callback);
   };
   const RegisterCancelCall = (callback: (callerId: string, receiverId: string) => void) => {
-      socketRef.current?.on('cancelCall', callback);
+    socketRef.current?.on('cancelCall', callback);
   };
   const UnregisterCancelCall = (callback: (callerId: string, receiverId: string) => void) => {
     socketRef.current?.off('cancelCall', callback);
   };
-  const RegisterCallEnded = async(callback: (time:string) => void) => {
+  const RegisterCallEnded = async (callback: (time: string) => void) => {
     // const update=await UpdateCallEndTimeById(callData.current.id,new Date().toISOString());
     // if(update){
-      socketRef.current?.on('CallEnded', callback);
+    socketRef.current?.on('CallEnded', callback);
     // }
   };
-  const UnregisterCallEnded = (callback: (time:string) => void) => {
-    socketRef.current?.off('cutCall', callback);
+  const UnregisterCallEnded = (callback: (time: string) => void) => {
+    socketRef.current?.off('CallEnded', callback);
   };
 
   useEffect(() => {
@@ -182,18 +199,29 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const socket = socketRef.current;
 
-    socket.on('connect', () => {
-      console.log('Socket connected');
+    socket.on('connect', async () => {
+      console.log('Socket connected:', socket.id);
+
+      if (!userRef.current) {
+        const user = await getUser();
+        userRef.current = user;
+      }
+
+      // Emit a register event to server with user ID
+      if (userRef.current) {
+        socket.emit('register', userRef.current._id);
+        console.log('User registered:', userRef.current.id);
+      }
     });
 
-    socket.on('incomingCall',async (data: { callerId: string; callerName: string; callerImage: string,receiverId:string }) => {
+    socket.on('incomingCall', async (data: { callerId: string; callerName: string; callerImage: string, receiverId: string }) => {
       // const call=await SaveCall({caller_jid:data.callerId,receiver_jid:data.receiverId,call_type:'voice',call_status:'MissedCall',start_time:new Date().toISOString(),end_time:new Date().toISOString(),duration:0})
       // if(call){
       // callData.current=callData;
-        setIncomingCall(data);
+      setIncomingCall(data);
       // }
     });
-    socket.on('cancelCall', async(data: { callerId: string }) => {
+    socket.on('cancelCall', async (data: { callerId: string }) => {
       setIncomingCall(null);
     });
     socket.on('disconnect', () => {
@@ -204,6 +232,12 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       socket.disconnect();
       socket.off('callAccepted');
       socket.off('callRejected');
+      socket.off('incomingCall');
+      socket.off('cancelCall');
+      socket.off('receiveMessage');
+      socket.off('receivePendingMessage');
+      socket.off('CallEnded');
+
     };
   }, []);
 

@@ -49,7 +49,7 @@ const InviteFriendScreen = () => {
   const ContactItem = ({ name, phone }: { name: string; phone: string }) => (
     <TouchableOpacity style={styles.contactItem} activeOpacity={0.7} disabled>
       <Image
-        source={require('../assets/images/icon.png')}
+        source={require('../../assets/images/icon.png')}
         style={styles.contactImage}
       />
       <View style={styles.contactTextContainer}>
