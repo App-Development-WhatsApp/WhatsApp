@@ -3,7 +3,7 @@ import { storeUser } from "./LocallyData";
 import { SaveUser } from "@/Database/ChatQuery";
 import { UserItem } from "@/types/ChatsType";
 
-export const BACK_URL = `http://10.10.50.51:5000`;
+export const BACK_URL = `http://192.168.163.25:5000`;
 export const API_URL = `${BACK_URL}/api/v1/users`;
 
 export const login = async (username: string, phoneNumber: string, file: string | null) => {
@@ -49,7 +49,7 @@ export const login = async (username: string, phoneNumber: string, file: string 
 };
 
 const handleError = (error: any) => {
-    console.error("Login error:", error?.response?.data || error.message);
+    console.error("Error:", error?.response?.data || error.message || error);
     return {
         success: false,
         message: error?.response?.data?.message || "An error occurred during login",
@@ -79,14 +79,14 @@ export const getAllUsersFromDatabase = async () => {
 
 export const getUserById = async (id: string) => {
     try {
-        const response = await axios.get(`${API_URL}/getUserById/${id}`);
+        const response = await axios.post(`${API_URL}/getUserById/${id}`);
         if (response.data.success && response.data.data) {
             const user: UserItem = {
-                id: response.data.data._id,
-                jid: response.data.data._id,
-                name: response.data.data.username,
-                image: response.data.data.image,
-                phone: response.data.data.phoneNumber,
+                id: response.data.data.user._id,
+                jid: response.data.data.user._id,
+                name: response.data.data.user.username,
+                image: response.data.data.user.image,
+                phone: response.data.data.user.phoneNumber,
             }
             SaveUser(user)
             return {

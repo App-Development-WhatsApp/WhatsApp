@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, ActivityIndicator,   TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, ActivityIndicator, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter, useNavigation } from 'expo-router';
 import { getUser } from '@/Services/LocallyData';
 import * as ImagePicker from 'expo-image-picker';
@@ -30,6 +30,19 @@ const SettingsScreen: React.FC = () => {
   const [about, setAbout] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
 
+  // List of settings options
+  const settingsOptions = [
+    { icon: '📁', title: 'Status Archive', routes: '/settings/statusArchive' },
+    { icon: '⬆', title: 'App Update', routes: '/settings/appUpdates' },
+    { icon: '💬', title: 'Chat', routes: '/settings/chatSetting' },
+    { icon: '🆘', title: 'Help', routes: '/settings/helpSetting' },
+    { icon: '📨', title: 'Invite a Friend', routes: '/settings/inviteFriends' },
+    { icon: '📝', title: 'List', routes: '/settings/listSetting' },
+    { icon: '🔔', title: 'Notifications', routes: '/settings/notificationSetting' },
+    { icon: '🔒', title: 'Privacy', routes: '/settings/privacySetting' },
+    { icon: '💾', title: 'Storage and Data', routes: '/settings/storageSetting' },
+  ];
+
   useEffect(() => {
     const checkUser = async () => {
       const user = await getUser();
@@ -37,7 +50,7 @@ const SettingsScreen: React.FC = () => {
         router.push('/login');
       }
       userData.current = user;
-      setIsLoading(false); // Stop loading once user data is fetched
+      setIsLoading(false);
     };
 
     if (!userData.current) {
@@ -75,11 +88,6 @@ const SettingsScreen: React.FC = () => {
     setIsEditing(false);
   };
 
-  const handleStatus = () => {
-    router.push('/settings/statusArchive'); // navigate to status page
-  };
-
-  // If loading, show shimmer effect
   if (isLoading) {
     return (
       <View style={styles.container}>
@@ -90,24 +98,31 @@ const SettingsScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.profileCard} onPress={handleProfilePress}>
-        <Image
-          source={{  uri: userData.current?.image || 'https://placekitten.com/200/200' }}
-          style={styles.profileImage}
-        />
-        <View style={styles.infoContainer}>
-          <Text style={styles.name}>{userData.current?.username}</Text>
-          <Text style={styles.about}>{userData.current?.about || 'Not getting about'}</Text>
-        </View>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.profileCard} onPress={handleProfilePress}>
+          <Image
+            source={{ uri: userData.current?.image || 'https://placekitten.com/200/200' }}
+            style={styles.profileImage}
+          />
+          <View style={styles.infoContainer}>
+            <Text style={styles.name}>{userData.current?.username}</Text>
+            <Text style={styles.about}>{userData.current?.about || 'No about info'}</Text>
+          </View>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.archiveTab}
-        onPress={() => router.push('/settings/statusArchive')}
-      >
-        <Text style={styles.archiveText}>📁 Status Archive</Text>
-      </TouchableOpacity>
+        {/* Settings Options */}
+      <ScrollView contentContainerStyle={{ paddingBottom: 30 }}>
+        {settingsOptions.map((item, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.archiveTab}
+            onPress={() => router.push(item.routes)}
+          >
+            <Text style={styles.archiveText}>{item.icon} {item.title}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
+      {/* Edit Profile Bottom Sheet */}
       {isEditing && (
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -161,6 +176,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1e1e1e',
     borderRadius: 10,
     padding: 15,
+    marginBottom: 20,
   },
   profileImage: {
     width: 60,
@@ -182,7 +198,7 @@ const styles = StyleSheet.create({
   },
   archiveTab: {
     height: 70,
-    marginTop: 20,
+    marginTop: 10,
     padding: 15,
     backgroundColor: '#1e1e1e',
     borderRadius: 10,
