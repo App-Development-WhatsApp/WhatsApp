@@ -51,8 +51,6 @@ export default function Chat() {
     loading.current = true
 
     const Chats: ChatItem[] = await getChats();
-    // const temp:any=await getAllUsers();
-    // console.log(Chats, "Chats",temp)
     setChats(Chats);
     setFilteredChats(Chats);
     loading.current = false;

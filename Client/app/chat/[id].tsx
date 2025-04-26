@@ -60,7 +60,6 @@ export default function ChatScreen() {
     initialize();
   }, []);
   useEffect(() => {
-    console.log("Fetching messages for ID:", id);
     const fetchMessages = async () => {
       const messagesData: MessageItem[] = await getMessages(id);
       setMessages(messagesData);
@@ -71,7 +70,8 @@ export default function ChatScreen() {
 
   useEffect(() => {
     const handleReceiveMessage = async (message: InsertMessageParams) => {
-      console.log("Received message:", message);
+      // console.log("Received message:", message);
+      message={...message,status:"sent"}
 
       const messageId = await insertMessage(message);
 
@@ -83,7 +83,7 @@ export default function ChatScreen() {
         message: message.message || "",
         file_urls: message.fileUrls ? JSON.stringify(message.fileUrls) : null,
         file_types: message.fileTypes ? JSON.stringify(message.fileTypes) : null,
-        status: message.status || "sent",
+        status: "sent",
         timestamp: message.timestamp || new Date().toISOString(),
         oneTime: message.oneTime || false,
         Other_image: userData.current?.image || '',
@@ -118,7 +118,6 @@ export default function ChatScreen() {
   }, [netInfo.isConnected])
 
   const handleSendMessage = async () => {
-    console.log("Sending message:", message.current, selectedFiles, selectedFileTypes);
     if (!message.current.trim() && !selectedFiles) return;
 
     const messageData: InsertMessageParams = {
@@ -137,7 +136,6 @@ export default function ChatScreen() {
 
     try {
       const messageId = await insertMessage(messageData);
-      console.log(messageId,"hello")
       const addMessage = {
         id: messageId,
         sender_jid: userData.current?._id,
@@ -161,18 +159,17 @@ export default function ChatScreen() {
           messageData.fileUrls = urls; 
           sendMessage(messageData);
           updateMessageStatus(messageId, 'sent');
+          console.log(messageId,"coming")
           setMessages(prev =>
             prev.map(msg =>
               msg.id === messageId ? { ...msg, status: 'sent', file_urls: JSON.stringify(urls) } : msg
             )
           );
         } else {
-          console.log(messageId)
           updateMessageStatus(messageId, 'failed');
         }
       } else {
         sendMessage(messageData);
-        console.log(messageId)
         updateMessageStatus(messageId, 'sent');
       }
     } catch (error) {
@@ -245,11 +242,9 @@ export default function ChatScreen() {
       params: {
         User: JSON.stringify(User), // must be stringified if object
       },
-    });
-  }
+    });}
 
-
-  const renderMessageItem = ({ item }: { item: any }) => {
+const renderMessageItem = ({ item }: { item: any }) => {
     const isSender = item.sender_jid === userData.current?._id;
     const urls = JSON.parse(item.file_urls || '[]');
     const fileTypes = JSON.parse(item.file_types || '[]');
@@ -263,7 +258,7 @@ export default function ChatScreen() {
 
         {/* Message Bubble */}
         <View style={[styles.messageBubble, isSender ? styles.rightBubble : styles.leftBubble]}>
-          <Text style={styles.messageText}>{item.message} {item.id}</Text>
+          <Text style={styles.messageText}>{item.message}</Text>
 
           {/* Render files if available */}
           {urls && urls.length > 0 && (
@@ -308,7 +303,7 @@ export default function ChatScreen() {
         </View>
       </View>
     );
-  };
+};
 
   return (
     <View style={styles.container}>
@@ -361,15 +356,15 @@ export default function ChatScreen() {
             <Text style={styles.modalTitle}>Select Media</Text>
 
             <View style={styles.iconRow}>
-              <TouchableOpacity style={styles.iconCircle}>
+              <TouchableOpacity style={styles.iconCircle} onPress={pickImage}>
                 <Text style={styles.iconText}>📷</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.iconCircle}>
+              <TouchableOpacity style={styles.iconCircle} onPress={pickDocument}>
                 <Text style={styles.iconText}>📄</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.iconCircle}>
+              <TouchableOpacity style={styles.iconCircle} onPress={pickContact}>
                 <Text style={styles.iconText}>📇</Text>
               </TouchableOpacity>
             </View>

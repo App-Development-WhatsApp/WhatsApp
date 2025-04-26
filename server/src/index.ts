@@ -38,28 +38,37 @@ declare module "socket.io" {
 }
 
 io.on("connection", (socket: Socket) => {
-    console.log("Socket connected:", socket.id);
+    console.log("🔌 Socket connected:", socket.id);
+
+    // 🔥 Register user once they connect
+    socket.on('register', (userId: string) => {
+        if (!userId) {
+            console.error('❌ No userId provided during registration.');
+            return;
+        }
+
+        // Avoid duplicate registration
+        if (!onlineUsers.has(userId)) {
+            onlineUsers.set(userId, socket.id);
+            onlineSockets.set(socket.id, userId);
+            socket.userId = userId; // Also attach to socket
+            console.log(`✅ User ${userId} registered with socket ${socket.id}`);
+        } else {
+            console.log(`⚠️ User ${userId} already registered. Skipping duplicate.`);
+        }
+    });
 
     socket.on('sendMessage', async (messageData: InsertMessageParams) => {
-        const { sender_jid, receiver_jid, type, message, fileUrls, fileTypes, oneTime, Sender_image, Sender_name } = messageData;
+        const { sender_jid, receiver_jid } = messageData;
         console.log(messageData);
 
-        const newMessage = new Message({
-            receiver_jid,
-            sender_jid,
-            message,
-            fileUrls,
-            fileTypes,
-            timestamp: new Date().toISOString(),
-            isCurrentUserSender: true,
-            oneTime,
-        });
 
         try {
             // const savedMessage = await newMessage.save();
+            const senderSocketId = onlineUsers.get(sender_jid);
             const receiverSocketId = onlineUsers.get(receiver_jid);
 
-            console.log(messageData, "real time chatting");
+            console.log(messageData, "real time chatting", senderSocketId, receiverSocketId);
 
             if (receiverSocketId) {
                 console.log("Receiver is online, sending message:", messageData, " ----", receiverSocketId);
@@ -72,16 +81,6 @@ io.on("connection", (socket: Socket) => {
             socket.emit('error', 'Failed to send message');
         }
     });
-
-    // socket.on("typing", async (props: { userid: string, friendId: string }) => {
-    //     console.log("Typing event:", props);
-    //     const receiverSocketId = onlineUsers.get(props.friendId);
-
-    //     if (receiverSocketId) {
-    //         console.log("Receiver is online, sending typing event to:", receiverSocketId);
-    //         io.to(receiverSocketId).emit("userTyping", props.userid);
-    //     }
-    // });
 
     socket.on("callIncoming", (callerId: string, callerName: string, callerImage: string, receiverId: string) => {
         const receiverSocketId = onlineUsers.get(receiverId);
@@ -126,14 +125,18 @@ io.on("connection", (socket: Socket) => {
     });
 
     socket.on("disconnect", () => {
+        console.log("❌ Socket disconnected:", socket.id);
+
         const userId = onlineSockets.get(socket.id);
+
         if (userId) {
-            const socketId = onlineUsers.get(userId);
-            if (socketId === socket.id) {
+            const savedSocketId = onlineUsers.get(userId);
+            if (savedSocketId === socket.id) {
                 onlineUsers.delete(userId);
+                console.log(`🗑️ Removed user ${userId} from onlineUsers`);
             }
             onlineSockets.delete(socket.id);
-            console.log(`User ${userId} disconnected (socket ID ${socket.id})`);
+            console.log(`🗑️ Removed socket ${socket.id} from onlineSockets`);
         }
     });
 });

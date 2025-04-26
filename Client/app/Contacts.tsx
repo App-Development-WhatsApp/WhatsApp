@@ -75,7 +75,6 @@ export default function Contacts() {
                             const { data } = await Contact.getContactsAsync({
                                 fields: [Contact.Fields.PhoneNumbers],
                             });
-                            // console.log('Contacts fetched:', data);
                             return data || [];
                         }
                         return []
