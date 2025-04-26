@@ -30,7 +30,12 @@ export default function Chat() {
 
   const dataFetchedRef = useRef(false);
 
-  useEffect(() => {
+
+  const fetchChats = async () => {
+    if (dataFetchedRef.current) {
+      return;
+    }
+    loading.current = true
     const checkUser = async () => {
       const user = await getUser();
       if (!user) {
@@ -42,15 +47,8 @@ export default function Chat() {
     if (!userData.current) {
       checkUser();
     }
-  }, []);
-
-  const fetchChats = async () => {
-    if (dataFetchedRef.current) {
-      return;
-    }
-    loading.current = true
-
-    const Chats: ChatItem[] = await getChats();
+    console.log('Fetching chats...', userData.current);
+    const Chats: ChatItem[] = await getChats(userData.current._id);
     setChats(Chats);
     console.log(Chats)
     setFilteredChats(Chats);
@@ -83,19 +81,19 @@ export default function Chat() {
     const date = new Date(timeString);
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
-    
+
     if (isToday) {
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else {
       return date.toLocaleDateString([], { day: 'numeric', month: 'short' });
     }
   };
-  
+
 
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor="#0e0e10" barStyle="light-content" />
-      
+
       <View style={styles.searchCtn}>
         <Feather name="search" size={20} color="#aaa" style={styles.searchIcon} />
         <TextInput
@@ -124,7 +122,7 @@ export default function Chat() {
                 activeOpacity={0.8}
               >
                 <Image source={{ uri: item.image || "" }} style={styles.profileImage} />
-                
+
                 <View style={styles.chatDetails}>
                   <View style={styles.chatTopRow}>
                     <Text style={styles.chatName} numberOfLines={1}>{item.name}</Text>

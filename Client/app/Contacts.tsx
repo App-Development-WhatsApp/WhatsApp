@@ -39,7 +39,7 @@ export default function Contacts() {
             headerRight: () => (
                 <View style={{ flexDirection: 'row', gap: 16, marginRight: 10 }}>
                     <TouchableOpacity onPress={() => console.log('Search pressed in Updates')}>
-                    <Ionicons name="search" size={22} color="#fff" />
+                        <Ionicons name="search" size={22} color="#fff" />
                     </TouchableOpacity>
                 </View>
             ),
@@ -211,7 +211,7 @@ export default function Contacts() {
 
                     <Text style={styles.contactsLabel}>Contacts on ChatApp</Text>
                     <FlatList
-                        data={appUsers}
+                        data={appUsers.filter((user: any) => user._id !== userData.current._id)}  // 🔥 Filter here
                         renderItem={({ item }) => <ContactItem user={item} isAppUser={true} />}
                         keyExtractor={(item) => item._id}
                         scrollEnabled={false}
@@ -327,5 +327,5 @@ const styles = StyleSheet.create({
         marginTop: 10,
         color: '#cbd5c0',
         fontSize: 16,
-  },
+    },
 });

@@ -1,5 +1,5 @@
 import { getUser } from "@/Services/LocallyData";
-import { getAllUsers, getMessages, getUserInfoByJid, insertMessage, InsertMessageParams, markMessageAsViewed, SaveUser, updateMessageStatus } from "@/Database/ChatQuery";
+import { getMessages, getUserInfoByJid, insertMessage, InsertMessageParams, markMessageAsViewed, SaveUser, updateMessageStatus } from "@/Database/ChatQuery";
 import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import { useEffect, useRef, useState, useLayoutEffect } from "react";
 import { View, Text, FlatList, StyleSheet, TextInput, TouchableOpacity, Modal, Linking } from "react-native";

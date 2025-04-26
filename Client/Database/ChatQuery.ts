@@ -143,7 +143,48 @@ export const updateMessageStatus = async (messageId: any, newStatus: string) => 
   }
 };
 
-export const getChats = async (): Promise<ChatItem[]> => {
+// export const getChats = async (): Promise<ChatItem[]> => {
+//   const db: any = await getDB();
+//   try {
+//     const statement = await db.prepareAsync(`
+//       SELECT 
+//         chat_list.jid, 
+//         chat_list.type, 
+//         chat_list.last_message, 
+//         chat_list.last_message_time, 
+//         chat_list.unread_count,
+//         CASE 
+//             WHEN chat_list.type = 'user' THEN users.name
+//             WHEN chat_list.type = 'group' THEN groups.group_name
+//         END AS name,
+//         CASE 
+//             WHEN chat_list.type = 'user' THEN users.image
+//             WHEN chat_list.type = 'group' THEN groups.group_image
+//         END AS image
+//       FROM 
+//         chat_list
+//       LEFT JOIN 
+//         users ON chat_list.jid = users.jid AND chat_list.type = 'user'
+//       LEFT JOIN 
+//         groups ON chat_list.jid = groups.group_jid AND chat_list.type = 'group'
+//       ORDER BY 
+//         chat_list.last_message_time DESC;
+//     `);
+
+//     try {
+//       const result = await statement.executeAsync();
+//       const allChats: ChatItem[] = await result.getAllAsync();
+//       return allChats;
+//     } finally {
+//       await statement.finalizeAsync(); // Always clean up
+//     }
+//   } catch (error) {
+//     console.error('Error fetching chats:', error);
+//     return [];
+//   }
+// };
+
+export const getChats = async (selfUserId: string): Promise<ChatItem[]> => {
   const db: any = await getDB();
   try {
     const statement = await db.prepareAsync(`
@@ -167,12 +208,14 @@ export const getChats = async (): Promise<ChatItem[]> => {
         users ON chat_list.jid = users.jid AND chat_list.type = 'user'
       LEFT JOIN 
         groups ON chat_list.jid = groups.group_jid AND chat_list.type = 'group'
+      WHERE 
+        chat_list.jid != ?
       ORDER BY 
         chat_list.last_message_time DESC;
     `);
 
     try {
-      const result = await statement.executeAsync();
+      const result = await statement.executeAsync([selfUserId]);
       const allChats: ChatItem[] = await result.getAllAsync();
       return allChats;
     } finally {
@@ -183,6 +226,7 @@ export const getChats = async (): Promise<ChatItem[]> => {
     return [];
   }
 };
+
 
 export const getAllUsers = async (): Promise<UserItem[]> => {
   try {
@@ -256,6 +300,12 @@ export const getMessages = async (chatId: string): Promise<MessageItem[]> => {
     try {
       const result = await statement.executeAsync([chatId, chatId]);
       const messages: MessageItem[] = await result.getAllAsync();
+      // 👇 After fetching messages, update unread_count = 0
+      await db.runAsync(`
+        UPDATE chat_list
+        SET unread_count = 0
+        WHERE jid = ?
+      `, [chatId]);
       return messages;
     } finally {
       await statement.finalizeAsync();

@@ -130,6 +130,7 @@ export const DeleteFiles = asyncHandler(async (req: any, res: Response) => {
 
 
 export const GetAllUsers = asyncHandler(async (req, res) => {
+    const {id}=req.body
     const users = await User.find({}, "username image phoneNumber _id");
     console.log("users", users)
     return res
