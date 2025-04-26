@@ -14,8 +14,7 @@ export interface UserItem {
     name: string | null;
     image: string | null;
     phone: string | null;
-  }
-    
+  }  
 
   export interface FileItem {
     id: string; // unique identifier (e.g., jid, fileId)
@@ -23,7 +22,6 @@ export interface UserItem {
     localFileName?: string;
   }
   
-
   export  type MediaAsset = {
     uri: string;
     type?: string;
@@ -66,3 +64,19 @@ export interface UserItem {
     last_call_type: string | null; // null if no call type is found
     last_call_status: string | null; // null if no call status is found
   };
+
+  export type MessageItem = {
+    id: number;
+    sender_jid: string;
+    receiver_jid: string;
+    receiver_type: string;
+    message: string;
+    file_urls: string | null;
+    file_types: string | null;
+    status: string;
+    timestamp: string;
+    oneTime: boolean;
+    Other_name: string;
+    Other_image: string;
+  };
+  

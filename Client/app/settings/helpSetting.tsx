@@ -81,4 +81,8 @@ const styles = StyleSheet.create({
   },
 });
 
+<<<<<<< HEAD
 export default HelpScreen;
+=======
+export default HelpScreen;
+>>>>>>> d1287a501afddf136136219ae40af179beda2aa8

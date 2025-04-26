@@ -1,7 +1,7 @@
-import { ChatItem, UserItem,CommunityItem, UserWithCallDetails } from "@/types/ChatsType";
+import { ChatItem, UserItem,CommunityItem, UserWithCallDetails, MessageItem } from "@/types/ChatsType";
 import { getDB } from "./ChatDatabase";
 
-type InsertMessageParams = {
+export type InsertMessageParams = {
   sender_jid: string;
   receiver_jid: string;
   type?: string;
@@ -10,7 +10,10 @@ type InsertMessageParams = {
   fileTypes?: string[] | null;
   oneTime?: boolean;
   isCurrentUserSender?: boolean;
-  status?: string
+  status?: string;
+  timestamp?: string;
+  Sender_image?: string;
+  Sender_name?: string;
 };
 
 export const insertMessage = async ({
@@ -18,104 +21,130 @@ export const insertMessage = async ({
   receiver_jid,
   type = 'user',
   message = null,
-  fileUrls = [],            // Array of file URLs
-  fileTypes = [],           // Array of file types
+  fileUrls = [],
+  fileTypes = [],
   oneTime = false,
+  timestamp = new Date().toISOString(),
   isCurrentUserSender,
-  status = 'sending'        // Default status is 'sending'
+  status = 'sending'
 }: InsertMessageParams) => {
-  const timestamp = new Date().toISOString();
   const db = await getDB();
 
-  return new Promise<number>((resolve, reject) => {
-    db.transaction(
-      (tx: any) => {
-        const fileUrlsString = fileUrls && fileUrls.length > 0 ? JSON.stringify(fileUrls) : null;
-        const fileTypesString = fileTypes && fileTypes.length > 0 ? JSON.stringify(fileTypes) : null;
+  console.log('Inserting message...');
 
-        // Insert into messages table
-        tx.executeSql(
-          `INSERT INTO messages 
-          (sender_jid, receiver_jid, receiver_type, message, file_urls, file_types, timestamp, oneTime, status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            sender_jid,
-            receiver_jid,
-            type,
-            message,
-            fileUrlsString,
-            fileTypesString,
-            timestamp,
-            oneTime ? 1 : 0,
-            status
-          ],
-          (tx: any, result: any) => {
-            // Get the ID of the inserted message
-            const messageId = result.insertId;
+  try {
+    const fileUrlsString = fileUrls && fileUrls.length > 0 ? JSON.stringify(fileUrls) : "";
+    const fileTypesString = fileTypes && fileTypes.length > 0 ? JSON.stringify(fileTypes) : "";
 
-            console.log('✅ Message inserted successfully with ID:', messageId);
+    const messageStmt = await db.prepareAsync(`
+      INSERT INTO messages 
+      (sender_jid, receiver_jid, receiver_type, message, file_urls, file_types, timestamp, oneTime, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
 
-            // After getting the message ID, insert into the chat_list
-            const chat_jid = isCurrentUserSender ? receiver_jid : sender_jid;
-            const preview = message || (fileTypes && fileTypes.length > 0 ? `[${fileTypes.join(", ").toUpperCase()}]` : '📎 Media');
-            const unreadIncrement = isCurrentUserSender ? 0 : 1;
+    let messageId: number | undefined;
 
-            tx.executeSql(
-              `INSERT INTO chat_list (jid, last_message, last_message_time, unread_count)
-               VALUES (?, ?, ?, ?)
-               ON CONFLICT(jid) DO UPDATE SET
-                 last_message = excluded.last_message,
-                 last_message_time = excluded.last_message_time,
-                 unread_count = unread_count + ?`,
-              [chat_jid, preview, timestamp, unreadIncrement, unreadIncrement]
-            );
-
-            // Resolve the promise with the message ID
-            resolve(messageId);
-          },
-          (tx: any, error: any) => {
-            console.error('❌ Transaction failed:', error);
-            reject(error);
-          }
-        );
-      },
-      (error: any) => {
-        console.error('❌ Transaction failed:', error);
-        reject(error);
-      },
-      () => {
-        console.log('✅ Transaction completed.');
-      }
-    );
-  });
-};
-
-export const updateMessageStatus = async (messageId: number, newStatus: string) => {
-  const db = await getDB();
-
-  db.transaction(
-    (tx: any) => {
-      tx.executeSql(
-        `UPDATE messages 
-         SET status = ? 
-         WHERE id = ?`,
-        [newStatus, messageId],
-        (tx: any, result: any) => {
-          console.log(`✅ Message status updated to ${newStatus}`);
-        },
-        (tx: any, error: any) => {
-          console.error('❌ Failed to update message status:', error);
-        }
-      );
-    },
-    (error: any) => {
-      console.error('❌ Transaction failed:', error);
-    },
-    () => {
-      console.log('✅ Transaction completed.');
+    try {
+      const result = await messageStmt.executeAsync([
+        sender_jid,
+        receiver_jid,
+        type,
+        message,
+        fileUrlsString,
+        fileTypesString,
+        timestamp,
+        oneTime ? 1 : 0,
+        status
+      ]);
+        messageId = result.insertId || result.lastInsertRowId;
+    } finally {
+      await messageStmt.finalizeAsync();
     }
-  );
+
+    // If messageId is undefined, throw an error
+    if (!messageId) {
+      throw new Error('Message ID is undefined after insertion.');
+    }
+
+    // Insert/Update into chat_list
+    const chat_jid = isCurrentUserSender ? receiver_jid : sender_jid;
+    const preview = message || '📎 Media';
+    const unreadIncrement = isCurrentUserSender ? 0 : 1;
+
+    const chatListStmt = await db.prepareAsync(`
+      INSERT INTO chat_list (jid, last_message, last_message_time, unread_count, type)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(jid) DO UPDATE SET
+        last_message = excluded.last_message,
+        last_message_time = excluded.last_message_time,
+        unread_count = unread_count + ?,
+        type = excluded.type
+    `);
+
+    try {
+      await chatListStmt.executeAsync([
+        chat_jid,
+        preview,
+        timestamp,
+        unreadIncrement,
+        type,
+        unreadIncrement
+      ]);
+      console.log('✅ Chat list updated successfully for jid:', chat_jid);
+    } finally {
+      await chatListStmt.finalizeAsync();
+    }
+
+    // Return the messageId
+    return messageId;
+
+  } catch (error) {
+    console.error('❌ Error inserting message:', error);
+    throw error;
+  }
 };
+
+
+export const updateMessageStatus = async (messageId: any, newStatus: string) => {
+  try {
+    const db = await getDB();
+    console.log('🔄 Updating message status...',messageId);
+
+    const preparedUpdate = await db.prepareAsync(
+      `UPDATE messages 
+       SET status = ? 
+       WHERE id = ?`
+    );
+
+    await preparedUpdate.executeAsync([newStatus, messageId]);
+    await preparedUpdate.finalizeAsync();
+    console.log(`✅ Message status updated to ${newStatus}`);
+
+    // Now fetch the updated message
+    const preparedSelect = await db.prepareAsync(
+      `SELECT * FROM messages WHERE id = ?`
+    );
+
+    const result = await preparedSelect.executeAsync([messageId]);
+    await preparedSelect.finalizeAsync();
+
+    if (result && result.rows && result.rows._array && result.rows._array.length > 0) {
+      const updatedMessage = result.rows._array[0];
+      console.log('✅ Updated message fetched:', updatedMessage);
+      return updatedMessage; // ✅ returning updated message
+    } else {
+      console.warn('⚠️ No message found with id:', messageId);
+      return null;
+    }
+
+  } catch (error) {
+    console.error('❌ Failed to update or fetch message:', error);
+    return null;
+  }
+};
+
+
+
 
 export const getChats = async (): Promise<ChatItem[]> => {
   const db: any = await getDB();
@@ -200,46 +229,47 @@ export const getUserInfoByJid = async (jid: string): Promise<UserItem | null> =>
   }
 };
 
-export const getMessages = async (chatId: any) => {
-  const db = await getDB();
+export const getMessages = async (chatId: string): Promise<MessageItem[]> => {
+  try {
+    const db = await getDB();
 
-  const query = `
-    SELECT 
-      messages.id,
-      messages.sender_jid,
-      messages.receiver_jid,
-      messages.receiver_type,
-      messages.message,
-      messages.oneTime,
-      messages.timestamp,
-      users.name AS sender_name,
-      users.image AS sender_image
-    FROM 
-      messages
-    LEFT JOIN 
-      users ON messages.sender_jid = users.jid
-    WHERE 
-      (messages.receiver_jid = ? OR messages.sender_jid = ?)
-    ORDER BY 
-      messages.timestamp ASC;
-  `;
+    const statement = await db.prepareAsync(`
+      SELECT 
+        messages.id,
+        messages.sender_jid,
+        messages.receiver_jid,
+        messages.receiver_type,
+        messages.message,
+        messages.file_urls,
+        messages.file_types,
+        messages.status,
+        messages.timestamp,
+        messages.oneTime,
+        users.name AS Other_name,
+        users.image AS Other_image
+      FROM 
+        messages
+      LEFT JOIN 
+        users ON messages.sender_jid = users.jid
+      WHERE 
+        (messages.receiver_jid = ? OR messages.sender_jid = ?)
+      ORDER BY 
+        messages.timestamp ASC
+    `);
 
-  return new Promise<any[]>((resolve, reject) => {
-    db.transaction((tx: any) => {
-      tx.executeSql(
-        query,
-        [chatId, chatId],  // Pass the id for the user/group
-        (_: any, { rows }: { rows: any }) => {
-          resolve(rows._array); // Resolve with the messages
-        },
-        (_: any, error: any) => {
-          reject(error);
-          return true;
-        }
-      );
-    });
-  });
+    try {
+      const result = await statement.executeAsync([chatId, chatId]);
+      const messages: MessageItem[] = await result.getAllAsync();
+      return messages;
+    } finally {
+      await statement.finalizeAsync();
+    }
+  } catch (error) {
+    console.error('❌ Error fetching messages:', error);
+    return [];
+  }
 };
+
 
 export const SaveUser = async (user: UserItem) => {
   const db = await getDB();

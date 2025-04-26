@@ -4,25 +4,15 @@ import { BACK_URL } from '@/Services/Api';
 import CallBanner from '@/components/CallingBanner';
 import { useRouter } from 'expo-router';
 import { SaveCall, UpdateCallEndTimeById, UpdateCallStatus } from '@/Database/ChatQuery';
-interface IMessage {
-  sender_jid: string;
-  receiver_jid: string;
-  type: string;
-  message: string | null;
-  fileUrls: string[] | null;
-  fileTypes: string[] | null;
-  timestamp: string;
-  isCurrentUserSender: boolean;
-  oneTime?: boolean;
-}
+import { InsertMessageParams } from '@/Database/ChatQuery';
 
 interface ISocketContext {
   socket: Socket | null;
-  globalMessages: IMessage[];
-  sendMessage: (message: IMessage) => void;
-  registerReceiveMessage: (callback: (message: IMessage) => void) => void;
-  unregisterReceiveMessage: (callback: (message: IMessage) => void) => void;
-  onPendingMessages: (callback: (message: IMessage) => void) => void;
+  globalMessages: InsertMessageParams[];
+  sendMessage: (message: InsertMessageParams) => void;
+  registerReceiveMessage: (callback: (message: InsertMessageParams) => void) => void;
+  unregisterReceiveMessage: (callback: (message: InsertMessageParams) => void) => void;
+  onPendingMessages: (callback: (message: InsertMessageParams) => void) => void;
   sendIncomingCall: (callerId: string, callerName: string, callerImage: string, receiverId: string) => void;
   RegisterAcceptCall: (callback: (CallerId: string) => void) => void;
   UnregisterAcceptCall: (callback: (CallerId: string) => void) => void;
@@ -63,7 +53,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const router = useRouter();
   const socketRef = useRef<Socket | null>(null);
   const callData=useRef<any|null>(null)
-  const [globalMessages, setGlobalMessages] = useState<IMessage[]>([]);
+  const [globalMessages, setGlobalMessages] = useState<InsertMessageParams[]>([]);
   const [incomingCall, setIncomingCall] = useState<null | {
     callerId: string;
     callerName: string;
@@ -137,18 +127,18 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  const sendMessage = (message: IMessage) => {
+  const sendMessage = (message: InsertMessageParams) => {
     socketRef.current?.emit('sendMessage', message);
   };
-  const registerReceiveMessage = (callback: (message: IMessage) => void) => {
+  const registerReceiveMessage = (callback: (message: InsertMessageParams) => void) => {
     socketRef.current?.on('receiveMessage', callback);
   };
 
-  const unregisterReceiveMessage = (callback: (message: IMessage) => void) => {
+  const unregisterReceiveMessage = (callback: (message: InsertMessageParams) => void) => {
     socketRef.current?.off('receiveMessage', callback);
   };
 
-  const onPendingMessages = (callback: (message: IMessage) => void) => {
+  const onPendingMessages = (callback: (message: InsertMessageParams) => void) => {
     socketRef.current?.on('receivePendingMessage', callback);
   };
   const RegisterAcceptCall = async(callback: (callerId: string) => void) => {

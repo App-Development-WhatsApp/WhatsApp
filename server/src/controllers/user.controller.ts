@@ -102,7 +102,7 @@ export const GetAllUsers = asyncHandler(async (req, res) => {
 export const getUserWithId = asyncHandler(async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const user = await User.findById(id).populate('friends', '_id username image phoneNumber');
+        const user = await User.findById(id).populate('_id username image phoneNumber');
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });

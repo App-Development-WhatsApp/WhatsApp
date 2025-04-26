@@ -1,5 +1,5 @@
 import { getUser } from "@/Services/LocallyData";
-import { getMessages, getUserInfoByJid, insertMessage, updateMessageStatus } from "@/Database/ChatQuery";
+import { getAllUsers, getMessages, getUserInfoByJid, insertMessage, InsertMessageParams, SaveUser, updateMessageStatus } from "@/Database/ChatQuery";
 import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import { useEffect, useRef, useState, useLayoutEffect } from "react";
 import {
@@ -10,11 +10,12 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Contacts from 'expo-contacts';
 import { useNetInfo } from "@react-native-community/netinfo";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons, FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { getUserById, sendFile } from "@/Services/Api";
 import { useSocket } from "@/Context/SocketContext";
 import { Image } from "react-native";
 import showToast from "@/utils/ToastHandler";
+import { MessageItem } from "@/types/ChatsType";
 export default function ChatScreen() {
   const { sendMessage, registerReceiveMessage, unregisterReceiveMessage } = useSocket();
   const [mediaModalVisible, setMediaModalVisible] = useState(false);
@@ -23,11 +24,12 @@ export default function ChatScreen() {
   const navigation = useNavigation();
   const userData = useRef<any | null>(null);
   const { id }: { id: string } = useLocalSearchParams();
-  const [messages, setMessages] = useState<any[]>([]);
-  const [message, setMessage] = useState('');
+  const [messages, setMessages] = useState<MessageItem[]>([]);
+  const message = useRef<string>('');
   const [selectedFiles, setSelectedFile] = useState<string[] | null>(null);
   const [selectedFileTypes, setSelectedFileTypes] = useState<any[] | null>(null);
   const [onetime, setonetime] = useState(false)
+  const inputRef = useRef<TextInput>(null);
   const User = useRef<any>(null)
 
   useLayoutEffect(() => {
@@ -57,6 +59,49 @@ export default function ChatScreen() {
     };
     initialize();
   }, []);
+  useEffect(() => {
+    console.log("Fetching messages for ID:", id);
+    const fetchMessages = async () => {
+      const messagesData: MessageItem[] = await getMessages(id);
+      setMessages(messagesData);
+    };
+    fetchMessages();
+  }, []);
+
+
+  useEffect(() => {
+    const handleReceiveMessage = async (message: InsertMessageParams) => {
+      console.log("Received message:", message);
+
+      const messageId = await insertMessage(message);
+
+      const addMessage = {
+        id: messageId,
+        sender_jid: message.sender_jid,
+        receiver_jid: message.receiver_jid,
+        receiver_type: message.type || "user", // fallback
+        message: message.message || "",
+        file_urls: message.fileUrls ? JSON.stringify(message.fileUrls) : null,
+        file_types: message.fileTypes ? JSON.stringify(message.fileTypes) : null,
+        status: message.status || "sent",
+        timestamp: message.timestamp || new Date().toISOString(),
+        oneTime: message.oneTime || false,
+        Other_image: userData.current?.image || '',
+        Other_name: userData.current?.username || ''
+      };
+
+      if (message.sender_jid === id) {
+        setMessages((prev) => [...prev, addMessage]);
+      }
+    };
+
+    registerReceiveMessage(handleReceiveMessage);
+
+    return () => {
+      unregisterReceiveMessage(handleReceiveMessage);
+    };
+  }, []);
+
 
   useEffect(() => {
     const getFriend = async () => {
@@ -72,114 +117,74 @@ export default function ChatScreen() {
     getFriend();
   }, [netInfo.isConnected])
 
-
-  useEffect(() => {
-    const handleReceiveMessage = async (message: any) => {
-      console.log("Received message:", message);
-      const messageId = await insertMessage(message);
-      if (message.sender_jid === id) {
-        setMessages((prev) => [...prev, message]);
-      }
-    }
-    registerReceiveMessage(handleReceiveMessage);
-    return () => {
-      unregisterReceiveMessage(handleReceiveMessage);
-    };
-  }, []);
-
-  useEffect(() => {
-    const fetchMessages = async () => {
-      if (userData.current && id) {
-        const messagesData = await getMessages(id);
-        setMessages(messagesData);
-      }
-    };
-    fetchMessages();
-  }, [id]);
-
   const handleSendMessage = async () => {
-    if (!message.trim() && !selectedFiles) return;
+    console.log("Sending message:", message.current, selectedFiles, selectedFileTypes);
+    if (!message.current.trim() && !selectedFiles) return;
 
-    const messageData = {
+    const messageData: InsertMessageParams = {
       sender_jid: userData.current?._id,
       receiver_jid: id,
       type: 'user',
-      message: message.trim() || '',
+      message: message.current.trim() || '',
       fileUrls: selectedFiles || null,
       fileTypes: selectedFileTypes || null,
       timestamp: new Date().toISOString(),
       isCurrentUserSender: true,
       oneTime: onetime,
+      Sender_image: userData.current?.image || null,
+      Sender_name: userData.current?.username || null
     };
 
     try {
       const messageId = await insertMessage(messageData);
-      setMessages(prev => [...prev, { ...messageData, id: messageId }]);
-      const messageWithId = { ...messageData, id: messageId };
+      console.log(messageId,"hello")
+      const addMessage = {
+        id: messageId,
+        sender_jid: userData.current?._id,
+        receiver_jid: id,
+        receiver_type: 'user',
+        message: message.current.trim() || '',
+        file_urls: JSON.stringify(selectedFiles) || "",
+        file_types: JSON.stringify(selectedFileTypes) || "",
+        status: "sending",
+        timestamp: new Date().toISOString(),
+        oneTime: onetime,
+        Other_image: userData.current?.image || null,
+        Other_name: userData.current?.username || null
+      };
+      setMessages(prev => [...prev, addMessage]);
       let urls: string[] = [];
       if (selectedFiles && selectedFiles?.length > 0) {
         const response = await sendFile(selectedFiles);
         if (response?.success) {
           urls = response.response;
-          // Update file urls in messageData if needed
-          messageData.fileUrls = urls; // or properly type it
+          messageData.fileUrls = urls; 
           sendMessage(messageData);
           updateMessageStatus(messageId, 'sent');
+          setMessages(prev =>
+            prev.map(msg =>
+              msg.id === messageId ? { ...msg, status: 'sent', file_urls: JSON.stringify(urls) } : msg
+            )
+          );
         } else {
+          console.log(messageId)
           updateMessageStatus(messageId, 'failed');
         }
       } else {
-        sendMessage(messageWithId);
+        sendMessage(messageData);
+        console.log(messageId)
         updateMessageStatus(messageId, 'sent');
       }
     } catch (error) {
       console.error('Failed to send message:', error);
+    } finally {
+      message.current = '';
+      inputRef.current?.clear();
+      setSelectedFile(null);
+      setSelectedFileTypes(null);
     }
-
-    console.log('Send Message:', message);
-    setMessage('');
-    setSelectedFile(null);
-    setSelectedFileTypes(null);
   };
 
-
-  const renderMessageItem = ({ item }: { item: any }) => {
-    const isSender = item.sender_jid === userData.current?._id;
-
-    return (
-      <View key={item.id} style={[styles.messageBubble, isSender ? styles.right : styles.left]}>
-        <Text style={styles.messageText}>{item.message}</Text>
-
-        {/* Render file if available */}
-        {item.fileUrls && item.fileUrls.length > 0 && (
-          <View style={styles.fileContainer}>
-            {item.fileUrls.map((fileUrl: string, index: number) => {
-              const fileType = item.fileTypes?.[index];
-
-              if (fileType && fileType.startsWith('image/')) {
-                return (
-                  <Image
-                    key={index}
-                    source={{ uri: fileUrl }}
-                    style={styles.fileImage}
-                  />
-                );
-              } else {
-                // You can handle different file types here (documents, etc.)
-                return (
-                  <Text key={index} style={styles.fileText}>
-                    Document: {fileUrl}
-                  </Text>
-                );
-              }
-            })}
-          </View>
-        )}
-
-        <Text style={styles.timestamp}>{item.timestamp}</Text>
-      </View>
-    );
-  };
 
   const openCamera = async (): Promise<void> => {
     // const result = await ImagePicker.launchCameraAsync({
@@ -243,8 +248,71 @@ export default function ChatScreen() {
     });
   }
 
+
+  const renderMessageItem = ({ item }: { item: any }) => {
+    const isSender = item.sender_jid === userData.current?._id;
+    const urls = JSON.parse(item.file_urls || '[]');
+    const fileTypes = JSON.parse(item.file_types || '[]');
+    return (
+      <View key={item.id} style={[styles.messageRow, isSender ? styles.rowReverse : {}]}>
+        {/* Small User Image */}
+        <Image
+          source={{ uri: item.Other_image }}
+          style={styles.userImage}
+        />
+
+        {/* Message Bubble */}
+        <View style={[styles.messageBubble, isSender ? styles.rightBubble : styles.leftBubble]}>
+          <Text style={styles.messageText}>{item.message} {item.id}</Text>
+
+          {/* Render files if available */}
+          {urls && urls.length > 0 && (
+            <View style={styles.fileContainer}>
+              {urls.map((fileUrl: string, index: number) => {
+                const fileType = fileTypes?.[index];
+                if (fileType && fileType.startsWith('image/')) {
+                  return (
+                    <Image
+                      key={index}
+                      source={{ uri: fileUrl }}
+                      style={styles.fileImage}
+                    />
+                  );
+                } else {
+                  return (
+                    <Text key={index} style={styles.fileText}>
+                      Document: {fileUrl}
+                    </Text>
+                  );
+                }
+              })}
+            </View>
+          )}
+
+          {/* Timestamp and Status Row */}
+          <View style={styles.timeStatusRow}>
+            <Text style={styles.timestamp}>{new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+
+            {isSender && (
+              <View style={styles.statusIcon}>
+                {item.status === 'sending' ? (
+                  <Ionicons name="time-outline" size={14} color="gray" />
+                ) : item.status === 'failed' ? (
+                  <FontAwesome name="exclamation-circle" size={14} color="red" />
+                ) : (
+                  <FontAwesome name="check" size={12} color="gray" />
+                )}
+              </View>
+            )}
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
+      {/* Chat Messages */}
       <FlatList
         data={messages}
         keyExtractor={(item) => item.id}
@@ -252,17 +320,20 @@ export default function ChatScreen() {
         contentContainerStyle={styles.chatList}
       />
 
+      {/* Input Section */}
       <View style={styles.inputContainer}>
-        <TouchableOpacity onPress={openCamera}>
+        <TouchableOpacity onPress={() => { }}>
           <Ionicons name="camera" size={24} color="white" />
         </TouchableOpacity>
 
         <TextInput
+          ref={inputRef}
           style={styles.input}
           placeholder="Type a message..."
           placeholderTextColor="#888"
-          value={message}
-          onChangeText={setMessage}
+          onChangeText={(text) => {
+            message.current = text;
+          }}
         />
 
         <TouchableOpacity onPress={() => setMediaModalVisible(true)} style={styles.emojiButton}>
@@ -274,7 +345,7 @@ export default function ChatScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Media Popup Modal */}
+      {/* Media Modal */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -290,66 +361,90 @@ export default function ChatScreen() {
             <Text style={styles.modalTitle}>Select Media</Text>
 
             <View style={styles.iconRow}>
-              <TouchableOpacity onPress={pickImage} style={styles.iconCircle}>
+              <TouchableOpacity style={styles.iconCircle}>
                 <Text style={styles.iconText}>📷</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={pickDocument} style={styles.iconCircle}>
+              <TouchableOpacity style={styles.iconCircle}>
                 <Text style={styles.iconText}>📄</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={pickContact} style={styles.iconCircle}>
+              <TouchableOpacity style={styles.iconCircle}>
                 <Text style={styles.iconText}>📇</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-
-
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0b141a" },
+
+  chatList: { paddingBottom: 70, padding: 10 },
+
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginBottom: 10,
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
+  userImage: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    marginHorizontal: 5,
+  },
   messageBubble: {
-    maxWidth: '80%',
+    maxWidth: '75%',
     padding: 10,
-    marginBottom: 5,
     borderRadius: 15,
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
   },
-  right: {
-    backgroundColor: '#0066ff', // blue for sent messages
-    alignSelf: 'flex-end',
+  leftBubble: {
+    backgroundColor: '#e1ffc7',
   },
-  left: {
-    backgroundColor: '#f1f1f1', // gray for received messages
-    alignSelf: 'flex-start',
+  rightBubble: {
+    backgroundColor: '#dcf8c6',
   },
   messageText: {
-    fontSize: 14,
-    color: '#fff',
+    fontSize: 15,
+    color: '#000',
   },
   timestamp: {
     fontSize: 10,
-    color: '#ccc',
-    marginTop: 5,
+    color: '#555',
+    marginRight: 4,
+  },
+  timeStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    alignSelf: 'flex-end',
+  },
+  statusIcon: {
+    marginLeft: 2,
   },
   fileContainer: {
-    marginTop: 10,
+    marginTop: 8,
   },
   fileImage: {
     width: 100,
     height: 100,
     borderRadius: 10,
-    marginVertical: 5,
+    marginTop: 5,
   },
   fileText: {
-    color: '#fff',
-    fontSize: 12,
-    marginVertical: 5,
+    fontSize: 13,
+    color: '#333',
+    marginTop: 5,
   },
+
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -360,50 +455,44 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     color: "white",
     fontSize: 16,
+    marginHorizontal: 8,
+    backgroundColor: '#2a3942',
+    borderRadius: 20,
   },
   sendButton: {
-    marginLeft: 10,
-    backgroundColor: "rgb(95, 252, 123)",
+    marginLeft: 8,
+    backgroundColor: "#25D366",
     padding: 10,
     borderRadius: 20,
   },
   emojiButton: {
-    marginLeft: 10,
+    marginLeft: 8,
   },
-  chatList: {
-    paddingBottom: 70,
-  },
+
   modalOverlay: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
   modalContainer: {
     width: "80%",
     backgroundColor: "#fff",
     borderRadius: 20,
     padding: 25,
-    position: "relative",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 10,
     alignItems: "center",
   },
   closeIcon: {
     position: "absolute",
     top: 10,
     right: 10,
-    zIndex: 1,
   },
   closeIconText: {
-    fontSize: 20,
+    fontSize: 22,
     color: "#555",
   },
   modalTitle: {
@@ -427,5 +516,5 @@ const styles = StyleSheet.create({
   },
   iconText: {
     fontSize: 28,
-  }
+  },
 });

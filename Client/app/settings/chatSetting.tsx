@@ -146,4 +146,8 @@ const styles = StyleSheet.create({
   },
 });
 
+<<<<<<< HEAD
 export default ChatScreen;
+=======
+export default ChatScreen;
+>>>>>>> d1287a501afddf136136219ae40af179beda2aa8

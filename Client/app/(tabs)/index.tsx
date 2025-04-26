@@ -14,7 +14,7 @@ import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
 import { getUser } from '@/Services/LocallyData';
-import { getChats } from '@/Database/ChatQuery';
+import { getAllUsers, getChats } from '@/Database/ChatQuery';
 import { ChatItem } from '@/types/ChatsType';
 import showToast from '@/utils/ToastHandler';
 
@@ -52,6 +52,8 @@ export default function Chat() {
     loading.current = true
 
     const Chats: ChatItem[] = await getChats();
+    // const temp:any=await getAllUsers();
+    // console.log(Chats, "Chats",temp)
     setChats(Chats);
     setFilteredChats(Chats);
     loading.current = false;
@@ -67,7 +69,6 @@ export default function Chat() {
   }, []);
 
   const handleSearch = async (searchValue: string) => {
-    console.log(searchValue)
     setSearchText(searchValue);
     if (searchValue.trim() === '') {
       setFilteredChats(chats);
@@ -180,6 +181,7 @@ const styles = StyleSheet.create({
   image: {
     width: 50,
     height: 50,
+    borderRadius: 50,
   },
   newUpdate: {
     position: 'absolute',

@@ -3,7 +3,7 @@ import * as SQLite from 'expo-sqlite';
 let dbInstance: any = null;
 
 export const getDB = async () => {
-  // if (dbInstance) return dbInstance;
+  if (dbInstance) return dbInstance;
 
   dbInstance = await SQLite.openDatabaseAsync('chat.db');
   await dbInstance.execAsync(`
