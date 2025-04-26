@@ -2,10 +2,7 @@ import { getUser } from "@/Services/LocallyData";
 import { getAllUsers, getMessages, getUserInfoByJid, insertMessage, InsertMessageParams, SaveUser, updateMessageStatus } from "@/Database/ChatQuery";
 import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import { useEffect, useRef, useState, useLayoutEffect } from "react";
-import {
-  View, Text, FlatList, StyleSheet,
-  TextInput, TouchableOpacity, Modal
-} from "react-native";
+import {View, Text, FlatList, StyleSheet,TextInput, TouchableOpacity, Modal} from "react-native";
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Contacts from 'expo-contacts';
@@ -34,19 +31,61 @@ export default function ChatScreen() {
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: 'Chat',
-      headerStyle: { backgroundColor: '#25292e' },
+      headerStyle: { 
+        backgroundColor: '#25292e',
+      },
       headerTintColor: '#fff',
       headerShadowVisible: false,
+      headerTitle: () => (
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View
+            style={{
+              width: 46,
+              height: 46,
+              borderRadius: 23,
+              backgroundColor: '#25D366',
+              justifyContent: 'center',
+              alignItems: 'center',
+              shadowColor: '#5efc82',
+              shadowOpacity: 0.6,
+              shadowRadius: 8,
+              elevation: 25,
+            }}
+          >
+            <Image
+              source={{ uri: User.current?.image || 'https://via.placeholder.com/150' }}
+              style={{ width: 44, height: 44, borderRadius: 21 }}
+            />
+          </View>
+          <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700', marginLeft: 10 }}>
+            {User.current?.name || 'User'}
+          </Text>
+        </View>
+      ),
       headerRight: () => (
-        <View style={{ flexDirection: 'row', gap: 16, marginRight: 10 }}>
-          <TouchableOpacity onPress={() => console.log('Search pressed in Updates')}>
-            <Ionicons name="search" size={22} color="#fff" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20, marginRight: 12 }}>
+          <TouchableOpacity
+            onPress={() => console.log('Search pressed')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="search" size={24} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => console.log('audio')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="call-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => console.log('video')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="videocam-outline" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
       ),
     });
-  }, [navigation]);
+  }, [navigation]);  
 
   useEffect(() => {
     const initialize = async () => {
@@ -66,7 +105,6 @@ export default function ChatScreen() {
     };
     fetchMessages();
   }, []);
-
 
   useEffect(() => {
     const handleReceiveMessage = async (message: InsertMessageParams) => {
@@ -101,7 +139,6 @@ export default function ChatScreen() {
       unregisterReceiveMessage(handleReceiveMessage);
     };
   }, []);
-
 
   useEffect(() => {
     const getFriend = async () => {
@@ -182,7 +219,6 @@ export default function ChatScreen() {
     }
   };
 
-
   const openCamera = async (): Promise<void> => {
     // const result = await ImagePicker.launchCameraAsync({
     //   mediaTypes: [ImagePicker.MediaType.Images, ImagePicker.MediaType.Videos],
@@ -244,10 +280,11 @@ export default function ChatScreen() {
       },
     });}
 
-const renderMessageItem = ({ item }: { item: any }) => {
+  const renderMessageItem = ({ item }: { item: any }) => {
     const isSender = item.sender_jid === userData.current?._id;
     const urls = JSON.parse(item.file_urls || '[]');
     const fileTypes = JSON.parse(item.file_types || '[]');
+
     return (
       <View key={item.id} style={[styles.messageRow, isSender ? styles.rowReverse : {}]}>
         {/* Small User Image */}
@@ -275,16 +312,19 @@ const renderMessageItem = ({ item }: { item: any }) => {
                   );
                 } else {
                   return (
-                    <Text key={index} style={styles.fileText}>
-                      Document: {fileUrl}
-                    </Text>
+                    <View key={index} style={styles.documentBox}>
+                      <FontAwesome name="file" size={20} color="#555" />
+                      <Text numberOfLines={1} style={styles.fileText}>
+                        {fileUrl.split('/').pop()}
+                      </Text>
+                    </View>
                   );
                 }
               })}
             </View>
           )}
 
-          {/* Timestamp and Status Row */}
+          {/* Timestamp and Status */}
           <View style={styles.timeStatusRow}>
             <Text style={styles.timestamp}>{new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
 
@@ -303,7 +343,7 @@ const renderMessageItem = ({ item }: { item: any }) => {
         </View>
       </View>
     );
-};
+  };
 
   return (
     <View style={styles.container}>
@@ -318,32 +358,32 @@ const renderMessageItem = ({ item }: { item: any }) => {
       {/* Input Section */}
       <View style={styles.inputContainer}>
         <TouchableOpacity onPress={() => { }}>
-          <Ionicons name="camera" size={24} color="white" />
+          <Ionicons name="camera" size={26} color="white" marginRight={5}/>
         </TouchableOpacity>
 
         <TextInput
           ref={inputRef}
           style={styles.input}
           placeholder="Type a message..."
-          placeholderTextColor="#888"
+          placeholderTextColor="#aaa"
           onChangeText={(text) => {
             message.current = text;
           }}
         />
 
-        <TouchableOpacity onPress={() => setMediaModalVisible(true)} style={styles.emojiButton}>
+        <TouchableOpacity onPress={() => setMediaModalVisible(true)} style={styles.iconButton}>
           <MaterialIcons name="attach-file" size={24} color="white" />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={handleSendMessage} style={styles.sendButton}>
-          <Ionicons name="send" size={22} color="#fff" />
+        <TouchableOpacity onPress={handleSendMessage} style={styles.iconButton}>
+          <Ionicons name="send" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
 
       {/* Media Modal */}
       <Modal
         animationType="slide"
-        transparent={true}
+        transparent
         visible={mediaModalVisible}
         onRequestClose={() => setMediaModalVisible(false)}
       >
@@ -376,140 +416,158 @@ const renderMessageItem = ({ item }: { item: any }) => {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0b141a" },
-
-  chatList: { paddingBottom: 70, padding: 10 },
-
+  container: {
+    flex: 1,
+    backgroundColor: '#1e1e1e',
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+  },
+  chatList: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
   messageRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    marginBottom: 10,
+    alignItems: 'flex-start', // Top align image and bubble
+    marginVertical: 6,
   },
   rowReverse: {
     flexDirection: 'row-reverse',
   },
   userImage: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    marginHorizontal: 5,
+    width: 35,
+    height: 35,
+    borderRadius: 18,
+    marginHorizontal: 6,
+    backgroundColor: '#444',
+    shadowColor: '#5efc82',
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 5,
   },
   messageBubble: {
     maxWidth: '75%',
     padding: 10,
     borderRadius: 15,
-    borderTopLeftRadius: 15,
-    borderTopRightRadius: 15,
+    backgroundColor: '#333',
   },
   leftBubble: {
-    backgroundColor: '#e1ffc7',
+    backgroundColor: '#2f2f2f',
+    borderTopLeftRadius: 4,
   },
   rightBubble: {
-    backgroundColor: '#dcf8c6',
+    backgroundColor: '#075e54',
+    borderTopRightRadius: 4,
   },
   messageText: {
-    fontSize: 15,
-    color: '#000',
+    color: '#fff',
+    fontSize: 14,
+    lineHeight: 20,
   },
-  timestamp: {
-    fontSize: 10,
-    color: '#555',
-    marginRight: 4,
+  fileContainer: {
+    marginTop: 6,
+  },
+  fileImage: {
+    width: 140,
+    height: 140,
+    borderRadius: 10,
+    marginTop: 6,
+  },
+  documentBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    backgroundColor: '#555',
+    padding: 8,
+    borderRadius: 8,
+  },
+  fileText: {
+    marginLeft: 8,
+    color: '#eee',
+    fontSize: 13,
+    maxWidth: 160,
   },
   timeStatusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 4,
-    alignSelf: 'flex-end',
+    justifyContent: 'flex-end',
+  },
+  timestamp: {
+    fontSize: 10,
+    color: '#bbb',
   },
   statusIcon: {
-    marginLeft: 2,
+    marginLeft: 5,
   },
-  fileContainer: {
-    marginTop: 8,
-  },
-  fileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 10,
-    marginTop: 5,
-  },
-  fileText: {
-    fontSize: 13,
-    color: '#333',
-    marginTop: 5,
-  },
-
   inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2a2a2a',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     borderTopWidth: 1,
-    borderTopColor: "#1f3b3e",
-    backgroundColor: "#202c33",
+    borderColor: '#333',
   },
   input: {
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    color: "white",
-    fontSize: 16,
-    marginHorizontal: 8,
-    backgroundColor: '#2a3942',
-    borderRadius: 20,
+    backgroundColor: '#3a3a3a',
+    borderRadius: 15,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: '#fff',
+    marginRight: 8,
   },
-  sendButton: {
-    marginLeft: 8,
-    backgroundColor: "#25D366",
-    padding: 10,
-    borderRadius: 20,
+  iconButton: {
+    padding: 6,
   },
-  emojiButton: {
-    marginLeft: 8,
-  },
-
   modalOverlay: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
   },
   modalContainer: {
-    width: "80%",
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 25,
-    alignItems: "center",
+    backgroundColor: '#292929',
+    padding: 18,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    alignItems: 'center',
   },
   closeIcon: {
-    position: "absolute",
-    top: 10,
-    right: 10,
+    alignSelf: 'flex-end',
   },
   closeIconText: {
     fontSize: 22,
-    color: "#555",
+    color: '#fff',
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 20,
+    fontWeight: '700',
+    color: '#fff',
+    marginVertical: 18,
   },
   iconRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    width: "100%",
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginTop: 16,
   },
   iconCircle: {
-    backgroundColor: "#f0f0f0",
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: "center",
-    alignItems: "center",
-    marginHorizontal: 10,
+    width: 55,
+    height: 55,
+    borderRadius: 27.5,
+    backgroundColor: '#444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#5efc82',
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 6,
   },
   iconText: {
-    fontSize: 28,
+    fontSize: 22,
+    color: '#fff',
   },
 });
