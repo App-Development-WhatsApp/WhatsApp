@@ -10,28 +10,30 @@ import {
   TextInput,
   Image,
   Dimensions,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Video } from 'expo-av';
+import { Video, AVPlaybackStatusSuccess  } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { MediaItem } from '@/types/ChatsType';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 
-const { width } = Dimensions.get('window');
+const screenWidth = Dimensions.get("window").width;
 
 export default function UploadStatus() {
   const { uri, type }: { uri: string; type: 'image' | 'video' } = useLocalSearchParams();
   const navigation = useNavigation();
-  const router = useRouter();
-
-  const videoRef = useRef<Video>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  
   const [selectedMedia, setSelectedMedia] = useState<MediaItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(false);
   const [thumbnails, setThumbnails] = useState<string[]>([]);
   const [startTime, setStartTime] = useState(0);
   const [endTime, setEndTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [loading, setLoading] = useState(false);
+  
+  const videoRef = useRef<Video>(null);
+  const isMounted = useRef(true);
 
   const currentMedia = selectedMedia[currentIndex];
 
@@ -75,12 +77,20 @@ export default function UploadStatus() {
     }
   }, [uri, type]);
 
+  useEffect(() => {
+    isMounted.current = true;
+    if (currentMedia && currentMedia.type !== "video") {
+      setThumbnails([]);
+    }
+    return () => {
+      isMounted.current = false;
+    };
+  }, [currentMedia]);
+
   const handlePickMedia = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsMultipleSelection: true,
-      quality: 1,
-      videoMaxDuration: 60,
     });
 
     if (!result.canceled && result.assets) {
@@ -118,24 +128,43 @@ export default function UploadStatus() {
     }
   };
 
-  const generateThumbnails = async (uri: string, duration: number) => {
+  const generateThumbnails = async (videoUri: string, videoDurationMillis: number) => {
+  try {
     setLoading(true);
-    const interval = Math.floor(duration / 10);
-    const frames: string[] = [];
 
-    for (let i = 1; i <= 10; i++) {
-      try {
-        const { uri: thumbnailUri } = await VideoThumbnails.getThumbnailAsync(uri, {
-          time: i * interval,
-        });
-        frames.push(thumbnailUri);
-      } catch (e) {
-        console.error('Thumbnail error:', e);
+    const numThumbnails = 10;
+    const interval = videoDurationMillis / numThumbnails;
+    const newThumbnails: string[] = [];
+
+    for (let i = 0; i < numThumbnails; i++) {
+      const { uri } = await VideoThumbnails.getThumbnailAsync(videoUri, {
+        time: Math.floor(i * interval),
+      });
+      if (isMounted.current) {
+        newThumbnails.push(uri);
       }
     }
 
-    setThumbnails(frames);
+    if (isMounted.current) {
+      setThumbnails(newThumbnails);
+    }
+  } catch (error) {
+    console.error(error);
+    Alert.alert("Error", "Failed to generate thumbnails");
+  } finally {
     setLoading(false);
+  }
+};
+
+  const handleDeleteMedia = (index: number) => {
+    const updated = [...selectedMedia];
+    updated.splice(index, 1);
+    if (updated.length === 0) {
+      navigation.goBack();
+    } else {
+      setSelectedMedia(updated);
+      setCurrentIndex(0);
+    }
   };
 
   const renderMediaPreview = ({ item, index }: { item: MediaItem; index: number }) => {
@@ -150,7 +179,7 @@ export default function UploadStatus() {
             <Video
               source={{ uri: item.uri }}
               style={styles.videoThumb}
-              ResizeMode="cover"
+              resizeMode="cover"
               isMuted
               shouldPlay={false}
             />
@@ -159,14 +188,7 @@ export default function UploadStatus() {
         )}
         <TouchableOpacity
           style={styles.deleteButton}
-          onPress={() => {
-            const updated = [...selectedMedia];
-            updated.splice(index, 1);
-            setSelectedMedia(updated);
-            if (index === currentIndex && updated.length > 0) {
-              setCurrentIndex(0);
-            }
-          }}
+          onPress={() => handleDeleteMedia(index)}
         >
           <Ionicons name="close-circle" size={18} color="white" />
         </TouchableOpacity>
@@ -182,9 +204,17 @@ export default function UploadStatus() {
     );
   }
 
+  if (!uri || !currentMedia) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.message}>No media selected</Text>
+      </View>
+    );
+  }
+
   const isImage = currentMedia.type === 'image';
 
-  return (
+   return (
     <View style={{ flex: 1, backgroundColor: 'black' }}>
       {isImage ? (
         <Image source={{ uri: currentMedia.uri }} style={styles.fullImage} />
@@ -196,10 +226,7 @@ export default function UploadStatus() {
             <View style={styles.trimContainer}>
               <View style={styles.trimTrack}>
                 <View style={[styles.overlay, { width: '10%' }]} />
-                <View style={[styles.selectedRange, { left: '10%', width: '60%' }]}>
-                  <View style={styles.handle} />
-                  <View style={styles.handle} />
-                </View>
+                <View style={[styles.selectedRange, { left: '10%', width: '60%' }]} />
                 <View style={[styles.overlay, { left: '70%', width: '30%' }]} />
                 <View style={styles.trimThumbnailStrip}>
                   {thumbnails.map((thumb, idx) => (
@@ -207,21 +234,23 @@ export default function UploadStatus() {
                   ))}
                 </View>
               </View>
-              <Text style={styles.trimLabel}>Start: {startTime} - End: {endTime}</Text>
+              <Text style={styles.trimLabel}>Start: {startTime.toFixed(2)}s - End: {endTime.toFixed(2)}s</Text>
             </View>
           )}
           <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={togglePlayPause}>
             <Video
               ref={videoRef}
               source={{ uri: currentMedia.uri }}
-              style={{ width: '100%', height: '90%', top: 50 }}
+              style={{ width: "100%", height: "90%", top: 50 }}
               resizeMode="contain"
               isLooping
               shouldPlay={false}
               onLoad={(status) => {
-                if (!status.isLoaded) return;
-                const duration = status.durationMillis || 10000;
-                generateThumbnails(currentMedia.uri, duration);
+                if (status.isLoaded) {
+                  const duration = status.durationMillis || 10000;
+                  setEndTime(duration / 1000);
+                  generateThumbnails(currentMedia.uri, duration);
+                }
               }}
             />
             {!isPlaying && (
@@ -296,7 +325,7 @@ const styles = StyleSheet.create({
   },
   handle: {
     width: 8,
-    backgroundColor: '#fff',
+    backgroundColor: 'red',
   },
   trimThumbnailStrip: {
     flexDirection: 'row',
@@ -307,7 +336,7 @@ const styles = StyleSheet.create({
   },
   trimThumbnail: {
     height: 60,
-    width: width / 10,
+    width: screenWidth / 10,
   },
   trimLabel: {
     color: '#fff',
