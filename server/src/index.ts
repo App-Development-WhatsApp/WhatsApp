@@ -148,8 +148,5 @@ connectDB()
     })
     .catch((error) => {
         console.error("MongoDB Connection Failed!!!", error);
-<<<<<<< HEAD
     });
-=======
-    });
->>>>>>> d1287a501afddf136136219ae40af179beda2aa8
+

@@ -2,11 +2,8 @@ import React, { useLayoutEffect, useState } from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-<<<<<<< HEAD
-import CustomSwitch from "./customSwitch"; // ✅ your own custom Switch
-=======
-import CustomSwitch from "./customSwitch";// ✅ your own custom Switch
->>>>>>> d1287a501afddf136136219ae40af179beda2aa8
+import CustomSwitch from "./customSwitch";
+
 
 const AppUpdateScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
@@ -128,8 +125,4 @@ const styles = StyleSheet.create({
   },
 });
 
-<<<<<<< HEAD
 export default AppUpdateScreen;
-=======
-export default AppUpdateScreen;
->>>>>>> d1287a501afddf136136219ae40af179beda2aa8

@@ -67,8 +67,4 @@ const styles = StyleSheet.create({
   },
 });
 
-<<<<<<< HEAD
 export default CustomSwitch;
-=======
-export default CustomSwitch;
->>>>>>> d1287a501afddf136136219ae40af179beda2aa8

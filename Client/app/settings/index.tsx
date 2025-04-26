@@ -33,11 +33,8 @@ const SettingsScreen: React.FC = () => {
   // List of settings options
   const settingsOptions = [
     { icon: '📁', title: 'Status Archive', routes: '/settings/statusArchive' },
-<<<<<<< HEAD
     { icon: '⬆️', title: 'App Update', routes: '/settings/appUpdates' },
-=======
     { icon: '⬆', title: 'App Update', routes: '/settings/appUpdates' },
->>>>>>> d1287a501afddf136136219ae40af179beda2aa8
     { icon: '💬', title: 'Chat', routes: '/settings/chatSetting' },
     { icon: '🆘', title: 'Help', routes: '/settings/helpSetting' },
     { icon: '📨', title: 'Invite a Friend', routes: '/settings/inviteFriends' },

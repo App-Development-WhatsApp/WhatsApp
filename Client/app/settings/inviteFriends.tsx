@@ -41,11 +41,7 @@ const InviteFriendScreen = () => {
   }, []);
 
   const inviteUser = (phone: string) => {
-<<<<<<< HEAD
     const message = `Hey! I'm using ChatApp. Join me here! [App Link]`;
-=======
-    const message =" Hey! I'm using ChatApp. Join me here! [App Link]";
->>>>>>> d1287a501afddf136136219ae40af179beda2aa8
     const smsUrl = `sms:${phone}?body=${encodeURIComponent(message)}`;
     Linking.openURL(smsUrl);
   };
@@ -53,11 +49,7 @@ const InviteFriendScreen = () => {
   const ContactItem = ({ name, phone }: { name: string; phone: string }) => (
     <TouchableOpacity style={styles.contactItem} activeOpacity={0.7} disabled>
       <Image
-<<<<<<< HEAD
         source={require('../assets/images/icon.png')}
-=======
-        source={require('../../assets/images/icon.png')}
->>>>>>> d1287a501afddf136136219ae40af179beda2aa8
         style={styles.contactImage}
       />
       <View style={styles.contactTextContainer}>
@@ -171,8 +163,4 @@ const styles = StyleSheet.create({
   },
 });
 
-<<<<<<< HEAD
 export default InviteFriendScreen;
-=======
-export default InviteFriendScreen;
->>>>>>> d1287a501afddf136136219ae40af179beda2aa8
