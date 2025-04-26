@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerUser,UploadFiles,GetAllUsers,getUserWithId } from "../controllers/user.controller";
+import { registerUser,UploadFiles,GetAllUsers,getUserWithId, DeleteFiles } from "../controllers/user.controller";
 
 
 
@@ -9,7 +9,8 @@ const router = Router();
 
 router.route("/login").post(registerUser);
 router.route("/getAllUsers").get(GetAllUsers);
-router.route("/send_File").post(UploadFiles)
+router.route("/sendfile").post(UploadFiles)
+router.route("/deletefile").post(DeleteFiles)
 router.route("/getUserById/:id").post(getUserWithId);
 
 

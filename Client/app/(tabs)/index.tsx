@@ -52,6 +52,7 @@ export default function Chat() {
 
     const Chats: ChatItem[] = await getChats();
     setChats(Chats);
+    console.log(Chats)
     setFilteredChats(Chats);
     loading.current = false;
     dataFetchedRef.current = true;

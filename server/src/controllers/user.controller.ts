@@ -4,7 +4,7 @@ import { ApiError } from "../utils/APIError";
 import { ApiResponse } from "../utils/APIResponse";
 //  this user can interact with mongodb because it has made a connection
 import { User } from "../model/user.model";
-import { uploadOnCloudinary } from "../utils/cloudinary";
+import { deleteFileFromCloudinary, uploadOnCloudinary, } from "../utils/cloudinary";
 
 
 
@@ -90,6 +90,44 @@ export const UploadFiles = asyncHandler(async (req: any, res: Response) => {
         res.status(500).json({ message: 'Server error' });
     }
 })
+
+export const DeleteFiles = asyncHandler(async (req: any, res: Response) => {
+    try {
+      const { uris } = req.body;
+  
+      if (!uris || !Array.isArray(uris) || uris.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'No URIs provided for deletion',
+        });
+      }
+  
+      const deleteResults = [];
+  
+      for (const uri of uris) {
+        const result = await deleteFileFromCloudinary(uri);
+        if (result?.success) {
+          deleteResults.push({ uri, success: true });
+        } else {
+          deleteResults.push({ uri, success: false });
+        }
+      }
+  
+      return res.json(new ApiResponse(
+        200,
+        'Files deletion process completed',
+        {
+          results: deleteResults,
+        }
+      ));
+  
+    } catch (error: any) {
+      console.error('Deletion error:', error);
+      res.status(500).json({ message: 'Server error during deletion' });
+    }
+  });
+  
+
 
 export const GetAllUsers = asyncHandler(async (req, res) => {
     const users = await User.find({}, "username image phoneNumber _id");

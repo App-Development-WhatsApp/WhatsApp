@@ -14,13 +14,14 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import {
-  deleteCommunityById,
-  getAllCommunities,
+  getAllCommunities, deleteCommunityById
 } from "@/Database/ChatQuery";
 import { CommunityItem } from "@/types/ChatsType";
 import { Menu, MenuOptions, MenuOption, MenuTrigger } from "react-native-popup-menu";
 import Modal from "react-native-modal";
 import Toast from "react-native-toast-message";
+import { deleteFiles } from "@/Services/Api";
+import showToast from "@/utils/ToastHandler";
 
 export default function Communities() {
   const [communities, setCommunities] = useState<CommunityItem[]>([]);
@@ -62,17 +63,35 @@ export default function Communities() {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          const result = await deleteCommunityById(communities[indexToDelete].id);
-          if (result) {
-            const updated = [...communities];
-            updated.splice(indexToDelete, 1);
-            setCommunities(updated);
-            console.log("Deleted");
+          try {
+            // setLoading(true); // 🌀 Start Loading
+
+            const community = communities[indexToDelete];
+
+            if (community.image) {
+              await deleteFiles([{ uri: community.image }]);
+            }
+
+            const result = await deleteCommunityById(community.id);
+            if (result) {
+              const updated = [...communities];
+              updated.splice(indexToDelete, 1);
+              setCommunities(updated);
+              console.log("Deleted successfully");
+              showToast('success', 'top', 'Deleted', 'Community deleted successfully');
+            } else {
+              console.error("Failed to delete community from database");
+            }
+            // setLoading(false); // ✅ Stop Loading after operation
+          } catch (error) {
+            console.error("Error while deleting community:", error);
+            // setLoading(false); // ❌ Stop loading even if error occurs
           }
         },
       },
     ]);
   };
+
 
   const handleAddMembers = () => {
     Toast.show({ type: "success", text1: "Members added!" });
@@ -120,7 +139,7 @@ export default function Communities() {
     <View style={styles.communityBox}>
       <View style={styles.communityHeader}>
         {item.image ? (
-          <Image source={{ uri: item.photo }} style={styles.communityImage} />
+          <Image source={{ uri: item.image }} style={styles.communityImage} />
         ) : (
           <Ionicons name="people" size={32} color="white" style={styles.communityIcon} />
         )}

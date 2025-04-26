@@ -71,29 +71,39 @@ export default function CreateCommunity() {
       showToast('error', 'bottom', `Name Missing`, 'Enter a name for the community');
       return;
     }
-    if (imageUri) {
-      const result = await sendFile(imageUri)
-      if (result?.success) {
-        setImageUri(result.response[0])
-      }
-    }
-    console.log(name, imageUri, description, last_time, selectedMembers)
-    setLoading(true)
+
+    setLoading(true);
+
     try {
-      // await AddCommunity({
-      //   name,
-      //   image: imageUri,
-      //   description,
-      //   last_time: last_time.current,
-      //   memberJids:selectedMembers,
-      // });
-      setLoading(false)
+      let uploadedImageUri = imageUri;
+
+      if (imageUri) {
+        const result = await sendFile([{ uri: imageUri }]);
+        if (result?.success) {
+          uploadedImageUri = result.response[0]; // use uploaded URL
+        } else {
+          throw new Error("Image upload failed");
+        }
+      }
+
+      console.log(name, uploadedImageUri, description, last_time.current, selectedMembers);
+
+      await AddCommunity({
+        name,
+        image: uploadedImageUri,
+        description,
+        last_time: last_time.current,
+        memberJids: selectedMembers,
+      });
+
+      setLoading(false);
     } catch (err) {
       console.error('Saving error:', err);
       showToast('error', 'bottom', `Error`, 'Failed to create community');
-      setLoading(false)
+      setLoading(false);
     }
   };
+
   useEffect(() => {
     (async () => {
       const fetchedUsers = await getAllUsers();

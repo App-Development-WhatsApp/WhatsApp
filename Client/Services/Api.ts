@@ -3,7 +3,7 @@ import { storeUser } from "./LocallyData";
 import { SaveUser } from "@/Database/ChatQuery";
 import { UserItem } from "@/types/ChatsType";
 
-export const BACK_URL = `http://10.10.48.135:5000`;
+export const BACK_URL = `http://192.168.163.25:5000`;
 export const API_URL = `${BACK_URL}/api/v1/users`;
 
 export const login = async (username: string, phoneNumber: string, file: string | null) => {
@@ -52,7 +52,7 @@ const handleError = (error: any) => {
     console.error("Error:", error?.response?.data || error.message || error);
     return {
         success: false,
-        message: error?.response?.data?.message || "An error occurred during login",
+        message: error?.response?.data?.message || "Server No response",
         users: [],
         user: null
     };
@@ -107,25 +107,62 @@ export const getUserById = async (id: string) => {
 };
 
 
-export const sendFile = async (selectedFiles: any[]) => {
+export const sendFile = async (selectedFiles: { uri: string; fileName?: string }[]) => {
     const formData = new FormData();
+
+    // Helper function to derive MIME type from file extension
+    const getMimeType = (uri: string) => {
+        const extension = uri.split('.').pop()?.toLowerCase();
+
+        switch (extension) {
+            case 'jpg':
+            case 'jpeg':
+                return 'image/jpeg';
+            case 'png':
+                return 'image/png';
+            case 'gif':
+                return 'image/gif';
+            case 'pdf':
+                return 'application/pdf';
+            case 'mp4':
+                return 'video/mp4';
+            case 'mp3':
+                return 'audio/mpeg';
+            case 'doc':
+                return 'application/msword';
+            case 'docx':
+                return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+            case 'ppt':
+                return 'application/vnd.ms-powerpoint';
+            case 'pptx':
+                return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+            case 'xls':
+                return 'application/vnd.ms-excel';
+            case 'xlsx':
+                return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+            default:
+                return 'application/octet-stream'; // fallback generic type
+        }
+    };
 
     // Add each file to the formData
     selectedFiles.forEach(file => {
         formData.append('files', {
             uri: file.uri,
-            name: file.fileName || 'file.jpg',
-            type: file.mimeType || 'image/jpeg',
-        });
+            name: file.fileName || file.uri.split('/').pop() || 'file',
+            type: getMimeType(file.uri),
+        } as any); // 'as any' needed if using React Native or strict TS
     });
 
     try {
-        const response = await axios.post(`${API_URL}/sendfile`, { // assuming '/upload' is your backend endpoint
-            body: formData,
+        const response = await axios.post(`${API_URL}/sendfile`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
         });
-
-        if (response.data.success && response.data.data) {
-            return { success: true, message: "Status uploaded successfully", response: response.data.data };
+        
+        if (response.data.success &&  response.data.data.data) {
+            return { success: true, message: "Files uploaded successfully", response: response.data.data.data };
         } else {
             return {
                 success: false,
@@ -137,4 +174,31 @@ export const sendFile = async (selectedFiles: any[]) => {
         console.error("Error uploading file:", error);
         return null;
     }
-}
+};
+
+export const deleteFiles = async (selectedFiles: { uri: string }[]) => {
+    try {
+      const uris = selectedFiles.map(file => file.uri);
+  
+      const response = await axios.post(`${API_URL}/deletefile`, { uris });
+  
+      if (response.data.success && response.data.data) {
+        return {
+          success: true,
+          message: "Files deleted successfully",
+          response: response.data.data,
+        };
+      } else {
+        return {
+          success: false,
+          response: [],
+          message: response.data.message || "Failed to delete files",
+        };
+      }
+    } catch (error) {
+      console.error("Error deleting files:", error);
+      return null;
+    }
+  };
+  
+

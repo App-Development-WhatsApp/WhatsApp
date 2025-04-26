@@ -1,4 +1,4 @@
-import { ChatItem, UserItem,CommunityItem, UserWithCallDetails, MessageItem } from "@/types/ChatsType";
+import { ChatItem, UserItem, CommunityItem, UserWithCallDetails, MessageItem } from "@/types/ChatsType";
 import { getDB } from "./ChatDatabase";
 
 export type InsertMessageParams = {
@@ -56,7 +56,7 @@ export const insertMessage = async ({
         oneTime ? 1 : 0,
         status
       ]);
-        messageId = result.insertId || result.lastInsertRowId;
+      messageId = result.insertId || result.lastInsertRowId;
     } finally {
       await messageStmt.finalizeAsync();
     }
@@ -108,7 +108,7 @@ export const insertMessage = async ({
 export const updateMessageStatus = async (messageId: any, newStatus: string) => {
   try {
     const db = await getDB();
-    console.log('🔄 Updating message status...',messageId);
+    console.log('🔄 Updating message status...', messageId);
 
     const preparedUpdate = await db.prepareAsync(
       `UPDATE messages 
@@ -142,9 +142,6 @@ export const updateMessageStatus = async (messageId: any, newStatus: string) => 
     return null;
   }
 };
-
-
-
 
 export const getChats = async (): Promise<ChatItem[]> => {
   const db: any = await getDB();
@@ -393,7 +390,7 @@ export const UpdateCallStatus = async (call_id: number, call_status: string) => 
       await statement.finalizeAsync(); // Always clean up
     }
   } catch (error) {
-    console.error('Error updating call status:', error);
+    console.error('Error updating call status:', error);
     return false
   }
 };
@@ -435,7 +432,7 @@ export const GetUsersInCalls = async (): Promise<UserWithCallDetails[]> => {
     return result;
   } catch (error) {
     console.error('Error fetching users from calls:', error);
-    return [];
+    return [];
   }
 };
 
@@ -518,7 +515,7 @@ export const getCommunityMembersDetails = async (communityId: number) => {
   }
 };
 
-export const getAllCommunities = async (): Promise<CommunityItem[]>=> {
+export const getAllCommunities = async (): Promise<CommunityItem[]> => {
   const db = await getDB();
   try {
     const communities = await db.getAllAsync(`
@@ -534,28 +531,26 @@ export const getAllCommunities = async (): Promise<CommunityItem[]>=> {
   }
 };
 
-export const deleteCommunityById = async (communityId: number): Promise<boolean> => {
+export const deleteCommunityById = async (
+  communityId: number
+): Promise<boolean> => {
   const db = await getDB();
   try {
-    await db.execAsync('BEGIN TRANSACTION');
-
-    // Delete all members of the community
+    // First, delete all members linked to this community
     await db.runAsync(
       `DELETE FROM community_members WHERE community_id = ?`,
-      communityId
+      [communityId]
     );
 
-    // Delete the community itself
+    // Then, delete the community itself
     await db.runAsync(
       `DELETE FROM communities WHERE id = ?`,
-      communityId
+      [communityId]
     );
 
-    await db.execAsync('COMMIT');
     return true;
   } catch (error) {
-    console.error('Failed to delete community and its references:', error);
-    await db.execAsync('ROLLBACK');
+    console.error('Error deleting community:', error);
     return false;
   }
 };
@@ -574,5 +569,21 @@ export const getCommunityById = async (communityId: number): Promise<CommunityIt
   } catch (error) {
     console.error('Failed to fetch community by ID:', error);
     return null;
+  }
+};
+
+export const markMessageAsViewed = async (messageId: number): Promise<boolean> => {
+  const db = await getDB();
+  try {
+    await db.runAsync(
+      `UPDATE messages
+       SET message = ?, file_urls = ?, file_types = ?
+       WHERE id = ?`,
+      ['One time viewed', '[]', '[]', messageId]
+    );
+    return true;
+  } catch (error) {
+    console.error('Error marking message as viewed:', error);
+    return false;
   }
 };
