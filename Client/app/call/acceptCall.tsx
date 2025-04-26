@@ -5,39 +5,51 @@ import { getUser } from '@/Services/LocallyData';
 import { useSocket } from '@/Context/SocketContext';
 
 export default function ActiveCallScreen() {
-    const { sendCutCall, RegistercutCall, UnregistercutCall } = useSocket();
+    const {sendCallEnded, RegisterCallEnded, UnregisterCallEnded } = useSocket();
     const { User } = useLocalSearchParams();
     const parsedUser = User ? JSON.parse(User as string) : null;
     const router = useRouter();
-    const [currentUser, setCurrentUser] = useState<any>(null);
+    const userData=useRef<any|null>(null)
     const [seconds, setSeconds] = useState(0);
+    const timerRef = useRef(0); // store seconds for reference
 
+useEffect(() => {
+    const interval = setInterval(() => {
+        setSeconds((prev) => {
+            timerRef.current = prev + 1; // update the ref with each tick
+            return timerRef.current;
+        });
+    }, 1000);
+
+    return () => clearInterval(interval);
+}, []);
     useEffect(() => {
         const fetchUser = async () => {
             const user = await getUser();
             if (!user) {
                 router.push('/login');
             } else {
-                setCurrentUser(user);
+                userData.current=user
             }
         };
         fetchUser();
-    }, []);
-
-    useEffect(() => {
-        const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
-        return () => clearInterval(timer);
     }, []);
     useEffect(() => {
         const cutted = () => {
             console.log('Call cut by the other user');
             router.canGoBack() && router.back();
         }
-        RegistercutCall(cutted)
+        RegisterCallEnded(cutted)
         return () => {
-            UnregistercutCall(cutted);
+        UnregisterCallEnded(cutted)
         }
     }, []);
+    const HandleCallEnded = async () => {
+        if (parsedUser && userData.current) {
+            sendCallEnded(userData.current._id, parsedUser.jid,timerRef.current);
+        }
+        router.canGoBack() && router.back();
+      };
 
 
     const formatTime = (s: number) => {
@@ -46,10 +58,6 @@ export default function ActiveCallScreen() {
         return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
     };
 
-    const endCall = () => {
-        sendCutCall(currentUser._id, parsedUser.id);
-        router.back();
-    };
 
     return (
         <View style={styles.container}>
@@ -64,14 +72,14 @@ export default function ActiveCallScreen() {
 
             <Text style={styles.vsText}>In Call With</Text>
 
-            {currentUser && (
+            {userData.current && (
                 <>
-                    <Image source={{ uri: currentUser.image }} style={styles.avatarSmall} />
-                    <Text style={styles.nameSmall}>{currentUser.name}</Text>
+                    <Image source={{ uri: userData.current.image }} style={styles.avatarSmall} />
+                    <Text style={styles.nameSmall}>{userData.current.username}</Text>
                 </>
             )}
 
-            <TouchableOpacity style={styles.endCallButton} onPress={endCall}>
+            <TouchableOpacity style={styles.endCallButton} onPress={HandleCallEnded}>
                 <Text style={styles.endCallText}>End Call</Text>
             </TouchableOpacity>
         </View>

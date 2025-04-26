@@ -4,12 +4,14 @@ import { useEffect, useRef } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSocket } from '@/Context/SocketContext';
+import { SaveCall, UpdateCallStatus } from '@/Database/ChatQuery';
 
 export default function CallScreen() {
   const { User } = useLocalSearchParams();
   const parsedUser = User ? JSON.parse(User as string) : null;
   const router = useRouter();
   const userData = useRef<any | null>(null);
+  const callData = useRef<any | null>(null);
   const { sendIncomingCall, RegisterAcceptCall, RegisterRejectCall, sendCancelCall } = useSocket();
   
   useEffect(() => {
@@ -28,20 +30,20 @@ export default function CallScreen() {
     }
 
     RegisterAcceptCall((callerId: string) => {
-      router.push({
-        pathname: "/call/acceptCall",
-        params: { User },
-      });
+        router.push({
+          pathname: "/call/acceptCall",
+          params: { User },
+        });
     });
 
-    RegisterRejectCall((callerId: string) => {
-      router.canGoBack() && router.back();
+    RegisterRejectCall(async (callerId: string) => {
+        router.canGoBack() && router.back();
     });
-  }, []);
+  },[])
 
-  const HandleCancel = () => {
+  const HandleCancel = async () => {
     if (parsedUser && userData.current) {
-      sendCancelCall(userData.current._id, parsedUser.id);
+        sendCancelCall(userData.current._id, parsedUser.jid);
     }
     router.canGoBack() && router.back();
   };

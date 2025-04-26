@@ -300,14 +300,35 @@ export const SaveCall = async (call: {
     }
   } catch (error) {
     console.error('Error saving call:', error);
+    return null
   }
 };
 
-export const UpdateCallEndTimeById = async (id: number, end_time: string, duration: number) => {
+export const UpdateCallEndTimeById = async (id: number, end_time: string, duration?: number) => {
   const db = await getDB();
   console.log(`Updating call ID ${id} with end_time: ${end_time} and duration: ${duration}`);
 
   try {
+    // If duration is not provided, fetch start_time and calculate it
+    if (duration === undefined || duration === null) {
+      const result = await db.getFirstAsync(`SELECT start_time FROM calls WHERE id = ?`, [id]);
+      if (!result) {
+        console.error(`No call found with ID ${id}`);
+        return;
+      }
+
+      const start = new Date(result.start_time).getTime();
+      const end = new Date(end_time).getTime();
+
+      if (!isNaN(start) && !isNaN(end)) {
+        duration = Math.floor((end - start) / 1000); // duration in seconds
+      } else {
+        console.error('Invalid start_time or end_time');
+        return;
+      }
+    }
+
+    // Now update the call
     const statement = await db.prepareAsync(`
       UPDATE calls
       SET end_time = ?, duration = ?
@@ -317,11 +338,36 @@ export const UpdateCallEndTimeById = async (id: number, end_time: string, durati
     try {
       await statement.executeAsync([end_time, duration, id]);
       console.log(`Call ID ${id} updated successfully`);
+      return true;
     } finally {
       await statement.finalizeAsync();
     }
   } catch (error) {
     console.error(`Error updating call ID ${id}:`, error);
+    return false;
+  }
+};
+
+export const UpdateCallStatus = async (call_id: number, call_status: string) => {
+  const db = await getDB();
+  console.log(`Updating call status for call_id ${call_id} to "${call_status}"`);
+  try {
+    const statement = await db.prepareAsync(`
+      UPDATE calls
+      SET call_status = ?
+      WHERE call_id = ?
+    `);
+
+    try {
+      await statement.executeAsync([call_status, call_id]);
+      console.log('Call status updated successfully');
+      return true;
+    } finally {
+      await statement.finalizeAsync(); // Always clean up
+    }
+  } catch (error) {
+    console.error('Error updating call status:', error);
+    return false
   }
 };
 
@@ -363,7 +409,7 @@ export const GetUsersInCalls = async (): Promise<UserWithCallDetails[]> => {
   } catch (error) {
     console.error('Error fetching users from calls:', error);
     return [];
-  }
+  }
 };
 
 export const GetCallHistoryByUser = async (jid: string) => {
