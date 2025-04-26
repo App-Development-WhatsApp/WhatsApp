@@ -107,7 +107,7 @@ export const getUserById = async (id: string) => {
 };
 
 
-export const sendFile = async (selectedFiles: any) => {
+export const sendFile = async (selectedFiles: any[]) => {
     const formData = new FormData();
 
     // Add each file to the formData

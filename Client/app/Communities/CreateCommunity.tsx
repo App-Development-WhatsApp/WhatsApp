@@ -7,6 +7,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter, useNavigation } from 'expo-router';
@@ -15,6 +16,7 @@ import { AntDesign, Feather } from '@expo/vector-icons';
 import { createCommunity, getAllUsers } from '@/Database/ChatQuery';
 import showToast from '@/utils/ToastHandler';
 import { UserItem } from '@/types/ChatsType';
+import { sendFile } from '@/Services/Api';
 
 
 export default function CreateCommunity() {
@@ -29,6 +31,7 @@ export default function CreateCommunity() {
   const last_time = useRef<string>(new Date().toISOString());
   const users = useRef<UserItem[]>([])
   const [openMemberSection, setopenMemberSection] = useState(false)
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [isloading, setLoading] = useState(false)
 
   useLayoutEffect(() => {
@@ -68,16 +71,22 @@ export default function CreateCommunity() {
       showToast('error', 'bottom', `Name Missing`, 'Enter a name for the community');
       return;
     }
-    console.log(name, imageUri,description,last_time,membersJids  )
+    if (imageUri) {
+      const result = await sendFile(imageUri)
+      if (result?.success) {
+        setImageUri(result.response[0])
+      }
+    }
+    console.log(name, imageUri, description, last_time, selectedMembers)
     setLoading(true)
     try {
-      await AddCommunity({
-        name,
-        image: imageUri,
-        description,
-        last_time: last_time.current,
-        memberJids: membersJids.current,
-      });
+      // await AddCommunity({
+      //   name,
+      //   image: imageUri,
+      //   description,
+      //   last_time: last_time.current,
+      //   memberJids:selectedMembers,
+      // });
       setLoading(false)
     } catch (err) {
       console.error('Saving error:', err);
@@ -86,13 +95,23 @@ export default function CreateCommunity() {
     }
   };
   useEffect(() => {
-    if (openMemberSection) {
-      (async () => {
-        const fetchedUsers = await getAllUsers(); // Assume it returns a list of { id, name, image, phone }
-        users.current = fetchedUsers;
-      })();
-    }
-  }, [openMemberSection]);
+    (async () => {
+      const fetchedUsers = await getAllUsers();
+      users.current = fetchedUsers;
+    })();
+  }, []);
+  const toggleMemberSelection = (userJid: string) => {
+    setSelectedMembers((prevSelected) => {
+      if (prevSelected.includes(userJid)) {
+        // Deselect the user
+        return prevSelected.filter((jid) => jid !== userJid);
+      } else {
+        // Select the user
+        return [...prevSelected, userJid];
+      }
+    });
+  };
+
 
   return (
     <View style={styles.container}>
@@ -137,8 +156,14 @@ export default function CreateCommunity() {
       />
       <Text style={styles.counter}>{description.length}/1000</Text>
 
-      <TouchableOpacity onPress={saveCommunity} style={styles.saveButton}>
-        <AntDesign name="arrowright" size={28} color="white" />
+      <TouchableOpacity disabled={isloading} onPress={saveCommunity} style={styles.saveButton}>
+        {
+          isloading ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <AntDesign name="arrowright" size={28} color="white" />
+          )
+        }
       </TouchableOpacity>
 
       {openMemberSection && (
@@ -151,21 +176,12 @@ export default function CreateCommunity() {
             <Text style={{ color: '#888' }}>No users available</Text>
           ) : (
             users.current.map((user) => {
-              const isSelected = membersJids.current.includes(user.jid);
+              const isSelected = selectedMembers.includes(user.jid);
 
               return (
                 <TouchableOpacity
                   key={user.id}
-                  onPress={() => {
-                    if (isSelected) {
-                      membersJids.current = membersJids.current.filter(j => j !== user.jid);
-                    } else {
-                      membersJids.current.push(user.jid);
-                    }
-                    // Force re-render
-                    setopenMemberSection(prev => !prev);
-                    setopenMemberSection(prev => !prev);
-                  }}
+                  onPress={() => toggleMemberSelection(user.jid)}
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
@@ -178,11 +194,7 @@ export default function CreateCommunity() {
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Image
-                      source={
-                        user.image
-                          ? { uri: user.image }
-                          : require('../../assets/images/blank.jpeg')
-                      }
+                      source={user.image ? { uri: user.image } : require('../../assets/images/blank.jpeg')}
                       style={{ width: 40, height: 40, borderRadius: 20, marginRight: 10 }}
                     />
                     <View>
@@ -197,7 +209,10 @@ export default function CreateCommunity() {
                 </TouchableOpacity>
               );
             })
+
           )}
+
+
 
           <TouchableOpacity
             onPress={() => setopenMemberSection(false)}
@@ -209,7 +224,7 @@ export default function CreateCommunity() {
               alignItems: 'center',
             }}
           >
-            <Text style={{ color: 'white' }}>Done Selecting Members</Text>
+            <Text style={{ color: 'white' }}>Select</Text>
           </TouchableOpacity>
         </View>
       )}

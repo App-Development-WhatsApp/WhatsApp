@@ -48,6 +48,7 @@ export default function Communities() {
   const loadCommunities = async () => {
     try {
       const community_info: CommunityItem[] = await getAllCommunities();
+      console.log(community_info)
       setCommunities(community_info);
     } catch (error) {
       console.error("Error loading communities:", error);
