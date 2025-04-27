@@ -116,6 +116,8 @@ io.on("connection", (socket: Socket) => {
         if (receiverSocketId) {
             io.to(receiverSocketId).emit("cancelCall");
             console.log(`Call cancelled from caller ${callerId}`);
+        }else{
+            console.log("Receiver is offline, call cancellation not sent.");
         }
     });
 
