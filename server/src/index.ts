@@ -83,7 +83,7 @@ io.on("connection", (socket: Socket) => {
     });
 
     socket.on("callIncoming", (callerId: string, callerName: string, callerImage: string, receiverId: string) => {
-        const receiverSocketId = onlineUsers.get(receiverId);
+        const receiverSocketId = onlineUsers.get(callerId);
         console.log("Receiver socket ID:", receiverSocketId);
         if (receiverSocketId) {
             io.to(receiverSocketId).emit("incomingCall", { callerId, callerName, callerImage });
@@ -113,6 +113,8 @@ io.on("connection", (socket: Socket) => {
         if (receiverSocketId) {
             io.to(receiverSocketId).emit("cancelCall");
             console.log(`Call cancelled from caller ${callerId}`);
+        }else{
+            console.log("Receiver is offline, call cancellation not sent.");
         }
     });
 

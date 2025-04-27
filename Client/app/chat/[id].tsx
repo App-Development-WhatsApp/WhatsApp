@@ -14,7 +14,7 @@ import { Image } from "react-native";
 import showToast from "@/utils/ToastHandler";
 import { MessageItem } from "@/types/ChatsType";
 import { Video } from "expo-av";
-import { downloadAndSharePDF } from "../../components/PDFViewer"; // Adjust the import path as needed
+// import { downloadAndSharePDF } from "../../components/PDFViewer"; // Adjust the import path as needed
 
 
 

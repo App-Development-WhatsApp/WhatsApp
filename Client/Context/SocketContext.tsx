@@ -77,9 +77,9 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const handleAccept = async () => {
-    // const result = await UpdateCallStatus(callData.current.id, 'Accepted');
+    const result = await UpdateCallStatus(callData.current.id, 'Accepted');
     if (socketRef.current
-      // && result
+      && result
     ) {
       socketRef.current.emit('callAccepted', incomingCall?.callerId);
       console.log('Call accepted');
@@ -90,7 +90,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
       setIncomingCall(null);
       router.push({
-        pathname: "/Call/acceptCall",
+        pathname: "/call/acceptCall",
         params: {
           User: JSON.stringify(User),
         },
@@ -110,18 +110,16 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const sendIncomingCall = async (callerId: string, callerName: string, callerImage: string, receiverId: string) => {
-    // const call=await SaveCall({caller_jid:callerId,receiver_jid:receiverId,call_type:'voice',call_status:'Calling',start_time:new Date().toISOString(),end_time:new Date().toISOString(),duration:0})
-    if (
-      // call && 
-      socketRef.current) {
-      //  callData.current=call
-      const callData = {
+    const call = await SaveCall({ caller_jid: callerId, receiver_jid: receiverId, call_type: 'voice', call_status: 'Calling', start_time: new Date().toISOString(), end_time: new Date().toISOString(), duration: 0 })
+    if (call &&socketRef.current) {
+      callData.current = call
+      const CD = {
         callerId,
         callerName,
         callerImage,
         receiverId,  // The ID of the person you're calling
       };
-      socketRef.current.emit('callIncoming', callData);  // Emit the incoming call event
+      socketRef.current.emit('callIncoming', CD);  // Emit the incoming call event
     }
   };
   const sendCancelCall = (callerId: string, receiverId: string) => {
