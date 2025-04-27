@@ -22,7 +22,7 @@ export default function CallScreen() {
       }
       userData.current = user;
       if (parsedUser && userData.current) {
-        sendIncomingCall(userData.current._id, userData.current.username, userData.current.image, parsedUser.id);
+        sendIncomingCall(userData.current._id, userData.current.username, userData.current.image, parsedUser.jid);
       }
     };
     if (!userData.current) {

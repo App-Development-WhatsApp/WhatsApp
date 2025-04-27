@@ -82,9 +82,12 @@ io.on("connection", (socket: Socket) => {
         }
     });
 
-    socket.on("callIncoming", (callerId: string, callerName: string, callerImage: string, receiverId: string) => {
-        const receiverSocketId = onlineUsers.get(callerId);
-        console.log("Receiver socket ID:", receiverSocketId);
+    socket.on("callIncoming", (props:{callerId: string, callerName: string, callerImage: string, receiverId: string}) => {
+        const receiverSocketId = onlineUsers.get(props.callerId);
+        const callerId=props.callerId
+        const callerName=props.callerName
+        const callerImage=props.callerImage
+        console.log(props.callerId,props.receiverId,"Receiver socket ID:", receiverSocketId);
         if (receiverSocketId) {
             io.to(receiverSocketId).emit("incomingCall", { callerId, callerName, callerImage });
         } else {

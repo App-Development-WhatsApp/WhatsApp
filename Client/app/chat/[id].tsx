@@ -12,9 +12,12 @@ import { getUserById, sendFile } from "@/Services/Api";
 import { useSocket } from "@/Context/SocketContext";
 import { Image } from "react-native";
 import showToast from "@/utils/ToastHandler";
-import { MessageItem } from "@/types/ChatsType";
+import { MessageItem, UserItem } from "@/types/ChatsType";
 import { Video } from "expo-av";
+<<<<<<< HEAD
 // import { downloadAndSharePDF } from "../../components/PDFViewer"; // Adjust the import path as needed
+=======
+>>>>>>> d430d49478feb7a970119fddc27cb2dc9c1a4f04
 
 
 
@@ -70,26 +73,48 @@ export default function ChatScreen() {
       ),
       headerRight: () => (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20, marginRight: 12 }}>
+          {/* Search Icon Wrapper */}
           <TouchableOpacity
             onPress={() => console.log('Search pressed')}
             activeOpacity={0.7}
+            style={{ flexDirection: 'row', alignItems: 'center' }}
           >
-            <Ionicons name="search" size={24} color="#fff" />
+            <View style={{padding: 3}}>
+              <Ionicons name="search" size={24} color="#fff" />
+            </View>
           </TouchableOpacity>
+      
+          {/* Call Icon Wrapper */}
           <TouchableOpacity
-            onPress={() => console.log('audio')}
+            onPress={() =>
+              handleCalling({
+                id: User.current.id,
+                jid: User.current.jid,
+                name: User.current.name,
+                image: User.current.image,
+                phone: User.current.phone,
+              })
+            }
             activeOpacity={0.7}
+            style={{ flexDirection: 'row', alignItems: 'center' }}
           >
-            <Ionicons name="call-outline" size={24} color="#fff" />
+            <View style={{padding: 3}}>
+              <Ionicons name="call-outline" size={24} color="#fff" />
+            </View>
           </TouchableOpacity>
+      
+          {/* Video Icon Wrapper */}
           <TouchableOpacity
             onPress={() => console.log('video')}
             activeOpacity={0.7}
+            style={{ flexDirection: 'row', alignItems: 'center' }}
           >
-            <Ionicons name="videocam-outline" size={24} color="#fff" />
+            <View style={{padding: 3}}>
+              <Ionicons name="videocam-outline" size={24} color="#fff" />
+            </View>
           </TouchableOpacity>
         </View>
-      ),
+      ),      
     });
   }, [navigation]);
 
@@ -284,14 +309,15 @@ export default function ChatScreen() {
     }
   };
 
-  const handleCalling = async () => {
+  const handleCalling = async (user: UserItem) => {
+    console.log("Calling")
     router.push({
-      pathname: "/Call",
+      pathname: "/call",
       params: {
-        User: JSON.stringify(User), // must be stringified if object
+        User: JSON.stringify(user),
       },
     });
-  }
+  };
 
   const removeFile = (fileToRemove: string, index: any) => {
     // Remove the file from selectedFiles

@@ -48,7 +48,7 @@ useEffect(() => {
         if (parsedUser && userData.current) {
             sendCallEnded(userData.current._id, parsedUser.jid,timerRef.current);
         }
-        router.canGoBack() && router.back();
+        router.replace('/(tabs)/Call');
       };
 
 
@@ -61,7 +61,7 @@ useEffect(() => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.timer}>{formatTime(seconds)}</Text>
+            <Text style={styles.timer}>{formatTime(seconds)} </Text>
 
             {parsedUser && (
                 <>
