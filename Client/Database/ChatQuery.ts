@@ -581,6 +581,43 @@ export const getAllCommunities = async (): Promise<CommunityItem[]> => {
   }
 };
 
+export const getCommunityMembers = async (communityId: number): Promise<UserItem[]> => {
+  const db = await getDB();
+  try {
+    const members = await db.getAllAsync(`
+      SELECT u.*
+      FROM users u
+      INNER JOIN community_members cm ON u.jid = cm.member_jid
+      WHERE cm.community_id = ?
+    `, [communityId]);
+
+    return members;
+  } catch (error) {
+    console.error('Failed to fetch community members:', error);
+    return [];
+  }
+};
+
+export const getNonCommunityMembers = async (communityId: number): Promise<UserItem[]> => {
+  const db = await getDB();
+  try {
+    const nonMembers = await db.getAllAsync(`
+      SELECT u.*
+      FROM users u
+      WHERE u.jid NOT IN (
+        SELECT member_jid
+        FROM community_members
+        WHERE community_id = ?
+      )
+    `, [communityId]);
+
+    return nonMembers;
+  } catch (error) {
+    console.error('Failed to fetch non-community members:', error);
+    return [];
+  }
+};
+
 export const deleteCommunityById = async (
   communityId: number
 ): Promise<boolean> => {
@@ -637,3 +674,38 @@ export const markMessageAsViewed = async (messageId: number): Promise<boolean> =
     return false;
   }
 };
+
+
+
+// Add Members in community
+
+export const addUsersToCommunity = async (communityId: number, userIds: string[]) => {
+  // assuming you have a "CommunityMembers" table
+  try {
+    for (const userId of userIds) {
+      await insertCommunityMember(communityId, userId); // your own insert query
+    }
+    return true;
+  } catch (error) {
+    console.error("Error adding users to community:", error);
+    throw error;
+  }
+};
+
+export const insertCommunityMember = async (communityId: number, userId: string) => {
+  const db = await getDB();
+  try {
+    const statement = await db.prepareAsync(`
+      INSERT INTO community_members (community_id, member_jid)
+      VALUES (?, ?)
+    `);
+
+    try {
+      await statement.executeAsync([communityId, userId]);
+    } finally {
+      await statement.finalizeAsync(); // Always clean up
+    }
+  } catch (error) {
+    console.error('Error inserting community member:', error);
+  }
+}

@@ -14,9 +14,12 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import {
-  getAllCommunities, deleteCommunityById
+  getAllCommunities, deleteCommunityById,
+  getCommunityMembers,
+  getNonCommunityMembers,
+  addUsersToCommunity
 } from "@/Database/ChatQuery";
-import { CommunityItem } from "@/types/ChatsType";
+import { CommunityItem, UserItem } from "@/types/ChatsType";
 import { Menu, MenuOptions, MenuOption, MenuTrigger } from "react-native-popup-menu";
 import Modal from "react-native-modal";
 import Toast from "react-native-toast-message";
@@ -29,18 +32,8 @@ export default function Communities() {
   const [modalType, setModalType] = useState<"add" | "view">("add");
   const [selectedCommunityIndex, setSelectedCommunityIndex] = useState<number | null>(null);
 
-  const [availableMembers] = useState([
-    { id: "1", name: "Alice" },
-    { id: "2", name: "Bob" },
-    { id: "3", name: "Charlie" },
-    { id: "4", name: "David" },
-    { id: "5", name: "Eve" },
-    { id: "6", name: "Alice" },
-    { id: "7", name: "Bob" },
-    { id: "8", name: "Charlie" },
-    { id: "9", name: "David" },
-    { id: "10", name: "Eve" },
-  ]);
+  const [members, setMembers] = useState<UserItem[]>([]);
+  const [nonMembers, setNonMembers] = useState<UserItem[]>([]);
 
   const [selectedMembers, setSelectedMembers] = useState<{ [key: string]: boolean }>({});
 
@@ -92,10 +85,31 @@ export default function Communities() {
     ]);
   };
 
+  const handleAddMembers = async () => {
+    if (selectedCommunityIndex === null) return;
 
-  const handleAddMembers = () => {
-    Toast.show({ type: "success", text1: "Members added!" });
-    setShowModal(false);
+    const selectedUserIds = Object.keys(selectedMembers).filter(
+      (id) => selectedMembers[id]
+    );
+
+    if (selectedUserIds.length === 0) {
+      Toast.show({ type: "error", text1: "Please select at least one member" });
+      return;
+    }
+
+    try {
+      const communityId = communities[selectedCommunityIndex].id;
+
+      await addUsersToCommunity(communityId, selectedUserIds);
+      showToast('success', 'top', 'Added', 'Members added successfully!');
+      const updatedMembers = await getCommunityMembers(communityId);
+      setMembers(updatedMembers);
+
+      setShowModal(false);
+    } catch (error) {
+      console.error("Error adding members:", error);
+      Toast.show({ type: "error", text1: "Failed to add members" });
+    }
   };
 
   const handleSaveMembers = () => {
@@ -110,20 +124,33 @@ export default function Communities() {
     }));
   };
 
-  const openModal = (type: "add" | "view", index: number) => {
+  const openModal = async (type: "add" | "view", index: number) => {
+    if (index < 0 || index >= communities.length) return;
+
+    const fetchedMembers = await getCommunityMembers(communities[index].id);
+    const fetchedNonMembers = await getNonCommunityMembers(communities[index].id);
+
+    setMembers(fetchedMembers);
+    setNonMembers(fetchedNonMembers);
+
     setModalType(type);
     setSelectedCommunityIndex(index);
     setShowModal(true);
+
     if (type === "view") {
-      // Default all to selected for demo
       const defaultMembers = Object.fromEntries(
-        availableMembers.map((m) => [m.id, true])
+        fetchedMembers.map((m) => [m.id, true])
       );
       setSelectedMembers(defaultMembers);
     } else {
-      setSelectedMembers({});
+      const defaultNonMembers = Object.fromEntries(
+        fetchedNonMembers.map((m) => [m.id, false])
+      );
+      setSelectedMembers(defaultNonMembers);
     }
   };
+
+
 
   useEffect(() => {
     loadCommunities();
@@ -222,10 +249,10 @@ export default function Communities() {
             {modalType === "add" ? "Add Members" : "Community Members"}
           </Text>
           <ScrollView style={{ maxHeight: 300 }}>
-            {availableMembers.map((member) => (
+            {(modalType === "add" ? nonMembers : members).map((member) => (
               <TouchableOpacity
                 key={member.id}
-                onPress={() => toggleMember(member.id)}
+                onPress={() => toggleMember(member.id.toString())}
                 style={styles.memberRow}
               >
                 <Text style={styles.memberName}>{member.name}</Text>
@@ -239,6 +266,7 @@ export default function Communities() {
               </TouchableOpacity>
             ))}
           </ScrollView>
+
 
           <TouchableOpacity
             style={styles.modalButton}
