@@ -33,10 +33,6 @@ import { Image } from "react-native";
 import showToast from "@/utils/ToastHandler";
 import { MessageItem, UserItem } from "@/types/ChatsType";
 import { Video } from "expo-av";
-<<<<<<< HEAD
-// import { downloadAndSharePDF } from "../../components/PDFViewer"; // Adjust the import path as needed
-=======
->>>>>>> d430d49478feb7a970119fddc27cb2dc9c1a4f04
 
 export default function ChatScreen() {
   const { sendMessage, registerReceiveMessage, unregisterReceiveMessage } =
