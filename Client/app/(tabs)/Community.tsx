@@ -8,41 +8,55 @@ import {
   FlatList,
   Alert,
   Image,
+  TextInput,
   ScrollView,
+  Linking,
+  Button,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import {
-  getAllCommunities, deleteCommunityById,
+  getAllCommunities,
+  deleteCommunityById,
   getCommunityMembers,
   getNonCommunityMembers,
-  addUsersToCommunity
+  addUsersToCommunity,
 } from "@/Database/ChatQuery";
 import { CommunityItem, UserItem } from "@/types/ChatsType";
-import { Menu, MenuOptions, MenuOption, MenuTrigger } from "react-native-popup-menu";
+import {
+  Menu,
+  MenuOptions,
+  MenuOption,
+  MenuTrigger,
+} from "react-native-popup-menu";
 import Modal from "react-native-modal";
 import Toast from "react-native-toast-message";
 import { deleteFiles } from "@/Services/Api";
 import showToast from "@/utils/ToastHandler";
+import * as ImagePicker from "expo-image-picker";
 
 export default function Communities() {
   const [communities, setCommunities] = useState<CommunityItem[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<"add" | "view">("add");
-  const [selectedCommunityIndex, setSelectedCommunityIndex] = useState<number | null>(null);
+  const [selectedCommunityIndex, setSelectedCommunityIndex] = useState<
+    number | null
+  >(null);
 
   const [members, setMembers] = useState<UserItem[]>([]);
   const [nonMembers, setNonMembers] = useState<UserItem[]>([]);
-
-  const [selectedMembers, setSelectedMembers] = useState<{ [key: string]: boolean }>({});
+  const [announcementVisible, setAnnouncementVisible] = useState(false);
+  const [selectedMembers, setSelectedMembers] = useState<{
+    [key: string]: boolean;
+  }>({});
 
   const router = useRouter();
 
   const loadCommunities = async () => {
     try {
       const community_info: CommunityItem[] = await getAllCommunities();
-      console.log(community_info)
+      console.log(community_info);
       setCommunities(community_info);
     } catch (error) {
       console.error("Error loading communities:", error);
@@ -71,7 +85,12 @@ export default function Communities() {
               updated.splice(indexToDelete, 1);
               setCommunities(updated);
               console.log("Deleted successfully");
-              showToast('success', 'top', 'Deleted', 'Community deleted successfully');
+              showToast(
+                "success",
+                "top",
+                "Deleted",
+                "Community deleted successfully"
+              );
             } else {
               console.error("Failed to delete community from database");
             }
@@ -101,7 +120,7 @@ export default function Communities() {
       const communityId = communities[selectedCommunityIndex].id;
 
       await addUsersToCommunity(communityId, selectedUserIds);
-      showToast('success', 'top', 'Added', 'Members added successfully!');
+      showToast("success", "top", "Added", "Members added successfully!");
       const updatedMembers = await getCommunityMembers(communityId);
       setMembers(updatedMembers);
 
@@ -128,7 +147,9 @@ export default function Communities() {
     if (index < 0 || index >= communities.length) return;
 
     const fetchedMembers = await getCommunityMembers(communities[index].id);
-    const fetchedNonMembers = await getNonCommunityMembers(communities[index].id);
+    const fetchedNonMembers = await getNonCommunityMembers(
+      communities[index].id
+    );
 
     setMembers(fetchedMembers);
     setNonMembers(fetchedNonMembers);
@@ -150,8 +171,6 @@ export default function Communities() {
     }
   };
 
-
-
   useEffect(() => {
     loadCommunities();
   }, []);
@@ -162,58 +181,195 @@ export default function Communities() {
     }, [])
   );
 
-  const renderCommunity = ({ item, index }: { item: any; index: number }) => (
-    <View style={styles.communityBox}>
-      <View style={styles.communityHeader}>
-        {item.image ? (
-          <Image source={{ uri: item.image }} style={styles.communityImage} />
-        ) : (
-          <Ionicons name="people" size={32} color="white" style={styles.communityIcon} />
-        )}
-        <Text style={styles.communityTitle} numberOfLines={1}>
-          {item.name}
-        </Text>
+  function AnnouncementModal({
+    isVisible,
+    onClose,
+  }: {
+    isVisible: boolean;
+    onClose: () => void;
+  }) {
+    const [textInput, setTextInput] = useState("");
+    const [media, setMedia] = useState<{
+      type: string;
+      uri: string;
+      name: string;
+    } | null>(null);
+    const [pickerVisible, setPickerVisible] = useState(false);
 
-        <Menu>
-          <MenuTrigger>
-            <MaterialIcons name="more-vert" size={24} color="#aaa" />
-          </MenuTrigger>
-          <MenuOptions
-            customStyles={{
-              optionsContainer: {
-                backgroundColor: "#2c2c2c",
-                borderRadius: 25,
-                paddingVertical: 4,
-                minWidth: 130,
-                borderColor: '#25D366',
-                borderWidth: 1
-              },
-            }}
+    const openCamera = async () => {
+      const result = await ImagePicker.launchCameraAsync();
+      if (!result.canceled && result.assets.length > 0) {
+        setMedia({
+          type: "image",
+          uri: result.assets[0].uri,
+          name: result.assets[0].fileName || "image.png",
+        });
+      }
+    };
+
+    const pickImage = async () => {
+      try {
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          quality: 1,
+        });
+
+        if (!result.canceled && result.assets?.length > 0) {
+          const image = result.assets[0];
+          setMedia({
+            type: "image",
+            uri: image.uri,
+            name: image.fileName || "image.png",
+          });
+        }
+      } catch (error) {
+        console.error("Error picking image:", error);
+      } finally {
+        setPickerVisible(false);
+      }
+    };
+
+    const handleSend = () => {
+      if (textInput) {
+        console.log("Text Message:", textInput);
+      } else {
+        console.log("Text Message: Nothing to send!");
+      }
+
+      if (media) {
+        console.log("Media Selected:", media);
+      } else {
+        console.log("Media Selected: Nothing to send!");
+      }
+
+      setTextInput("");
+      setMedia(null);
+      onClose();
+    };
+
+    return (
+      <Modal
+        isVisible={isVisible}
+        onBackdropPress={onClose}
+        style={{ justifyContent: "flex-end", margin: 0 }}
+      >
+        <View style={announcementStyles.modalContainer}>
+          <View style={announcementStyles.headerRow}>
+            <TouchableOpacity onPress={openCamera}>
+              <Ionicons name="camera" size={28} color="white" />
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setPickerVisible(true)}>
+              <MaterialIcons name="attach-file" size={28} color="white" />
+            </TouchableOpacity>
+          </View>
+
+          {media && (
+            <View style={announcementStyles.previewBox}>
+                <Image
+                  source={{ uri: media.uri }}
+                  style={announcementStyles.previewImage}
+                />
+            </View>
+          )}
+
+          <TextInput
+            placeholder="Write something..."
+            placeholderTextColor="#ccc"
+            style={announcementStyles.input}
+            value={textInput}
+            onChangeText={setTextInput}
+          />
+
+          <TouchableOpacity
+            style={announcementStyles.sendButton}
+            onPress={handleSend}
           >
-            <MenuOption onSelect={() => deleteCommunity({ indexToDelete: index })}>
-              <Text style={{ padding: 10, color: "red" }}>Delete</Text>
-            </MenuOption>
-            <MenuOption onSelect={() => openModal("add", index)}>
-              <Text style={{ padding: 10, color: "white" }}>Add Member</Text>
-            </MenuOption>
-            <MenuOption onSelect={() => openModal("view", index)}>
-              <Text style={{ padding: 10, color: "white" }}>Members</Text>
-            </MenuOption>
-          </MenuOptions>
-        </Menu>
-      </View>
+            <Text style={announcementStyles.sendButtonText}>Send</Text>
+          </TouchableOpacity>
 
-      <View style={styles.messageBox}>
-        <View style={styles.messageRow}>
-          <MaterialIcons name="campaign" size={20} color="#00A884" />
-          <Text style={styles.messageTitle}>Announcements</Text>
-          <Text style={styles.time}>3:15 am</Text>
+          {/* Media Picker Popup */}
+          <Modal
+            isVisible={pickerVisible}
+            onBackdropPress={() => setPickerVisible(false)}
+          >
+            <View style={announcementStyles.pickerPopup}>
+              <TouchableOpacity
+                onPress={pickImage}
+                style={announcementStyles.pickerOption}
+              >
+                <Ionicons name="image" size={24} color="white" />
+                <Text style={announcementStyles.pickerText}>Pick Image </Text>
+              </TouchableOpacity>
+            </View>
+          </Modal>
         </View>
-        <Text style={styles.messageSubtitle} numberOfLines={1}>
-          {item.description || "Welcome to your community!"}
-        </Text>
+      </Modal>
+    );
+  }
+
+  const renderCommunity = ({ item, index }: { item: any; index: number }) => (
+    <TouchableOpacity onPress={() => setAnnouncementVisible(true)}>
+      <View style={styles.communityBox}>
+        <View style={styles.communityHeader}>
+          {item.image ? (
+            <Image source={{ uri: item.image }} style={styles.communityImage} />
+          ) : (
+            <Ionicons
+              name="people"
+              size={32}
+              color="white"
+              style={styles.communityIcon}
+            />
+          )}
+          <Text style={styles.communityTitle} numberOfLines={1}>
+            {item.name}
+          </Text>
+
+          <Menu>
+            <MenuTrigger>
+              <MaterialIcons name="more-vert" size={24} color="#aaa" />
+            </MenuTrigger>
+            <MenuOptions
+              customStyles={{
+                optionsContainer: {
+                  backgroundColor: "#2c2c2c",
+                  borderRadius: 25,
+                  paddingVertical: 4,
+                  minWidth: 130,
+                  borderColor: "#25D366",
+                  borderWidth: 1,
+                },
+              }}
+            >
+              <MenuOption
+                onSelect={() => deleteCommunity({ indexToDelete: index })}
+              >
+                <Text style={{ padding: 10, color: "red" }}>Delete</Text>
+              </MenuOption>
+              <MenuOption onSelect={() => openModal("add", index)}>
+                <Text style={{ padding: 10, color: "white" }}>Add Member</Text>
+              </MenuOption>
+              <MenuOption onSelect={() => openModal("view", index)}>
+                <Text style={{ padding: 10, color: "white" }}>Members</Text>
+              </MenuOption>
+            </MenuOptions>
+          </Menu>
+        </View>
+
+        <View style={styles.messageBox}>
+          <View style={styles.messageRow}>
+            <MaterialIcons name="campaign" size={20} color="#00A884" />
+            <Text style={styles.messageTitle}>Announcements</Text>
+            <Text style={styles.time}>3:15 am</Text>
+          </View>
+          <Text style={styles.messageSubtitle} numberOfLines={1}>
+            {item.description || "Welcome to your community!"}
+          </Text>
+        </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -258,7 +414,9 @@ export default function Communities() {
                 <Text style={styles.memberName}>{member.name}</Text>
                 <MaterialIcons
                   name={
-                    selectedMembers[member.id] ? "check-circle" : "radio-button-unchecked"
+                    selectedMembers[member.id]
+                      ? "check-circle"
+                      : "radio-button-unchecked"
                   }
                   size={24}
                   color={selectedMembers[member.id] ? "#00A884" : "#aaa"}
@@ -266,7 +424,6 @@ export default function Communities() {
               </TouchableOpacity>
             ))}
           </ScrollView>
-
 
           <TouchableOpacity
             style={styles.modalButton}
@@ -278,6 +435,11 @@ export default function Communities() {
           </TouchableOpacity>
         </View>
       </Modal>
+
+      <AnnouncementModal
+        isVisible={announcementVisible}
+        onClose={() => setAnnouncementVisible(false)}
+      />
 
       <Toast />
     </SafeAreaView>
@@ -384,6 +546,123 @@ const styles = StyleSheet.create({
     color: "white",
     textAlign: "center",
     fontWeight: "bold",
+    fontSize: 16,
+  },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  iconButton: {
+    padding: 8,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 50,
+  },
+  input: {
+    flex: 1,
+    color: "white",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+  },
+  previewBox: {
+    marginTop: 15,
+    alignItems: "center",
+  },
+  previewImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 20,
+    marginTop: 10,
+  },
+  documentText: {
+    color: "white",
+    fontSize: 16,
+    marginTop: 10,
+  },
+  pickerContainer: {
+    backgroundColor: "#2c2c2c",
+    borderRadius: 20,
+    padding: 20,
+    alignItems: "center",
+    borderColor: "#25D366",
+    borderWidth: 1,
+  },
+  pickerOption: {
+    paddingVertical: 12,
+    width: 180,
+    alignItems: "center",
+  },
+  pickerText: {
+    color: "white",
+    fontSize: 16,
+  },
+});
+
+const announcementStyles = StyleSheet.create({
+  modalContainer: {
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    padding: 20,
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    backdropFilter: "blur(10px)", // <-- only works on web, mobile equivalent handled by glassy color
+    borderColor: "#00A884",
+    borderWidth: 1,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  previewBox: {
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  previewImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 20,
+  },
+  docBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    backgroundColor: "#3a3a3a",
+    borderRadius: 15,
+  },
+  input: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 20,
+    padding: 15,
+    color: "white",
+    marginBottom: 20,
+  },
+  sendButton: {
+    backgroundColor: "#00A884",
+    padding: 15,
+    borderRadius: 20,
+    alignItems: "center",
+  },
+  sendButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  pickerPopup: {
+    backgroundColor: "#2c2c2c",
+    borderRadius: 20,
+    padding: 20,
+    alignItems: "center",
+  },
+  pickerOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 10,
+  },
+  pickerText: {
+    color: "white",
+    marginLeft: 10,
     fontSize: 16,
   },
 });
