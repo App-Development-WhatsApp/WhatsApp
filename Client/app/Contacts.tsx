@@ -10,6 +10,7 @@ import {
     ActivityIndicator,
     Linking,
     Alert,
+    TextInput
 } from 'react-native';
 import { getAllUsers } from '@/Database/ChatQuery';
 import { useNetInfo } from '@react-native-community/netinfo';
@@ -32,20 +33,13 @@ export default function Contacts() {
 
     useLayoutEffect(() => {
         navigation.setOptions({
-            title: 'Select Contact',
+            title: 'Select Contacts',
             headerStyle: { backgroundColor: '#25292e' },
             headerTintColor: '#fff',
             headerShadowVisible: false,
-            headerRight: () => (
-                <View style={{ flexDirection: 'row', gap: 16, marginRight: 10 }}>
-                    <TouchableOpacity onPress={() => console.log('Search pressed in Updates')}>
-                        <Ionicons name="search" size={22} color="#fff" />
-                    </TouchableOpacity>
-                </View>
-            ),
         });
-    }, [navigation]);
-
+      }, [navigation]);
+           
     const normalizePhoneNumber = (num: string) => {
         return num.replace(/\D/g, '').replace(/^0+/, '');
     };
@@ -232,7 +226,7 @@ export default function Contacts() {
 
 const styles = StyleSheet.create({
     container: {
-        padding: 10,
+        padding: 16,
         backgroundColor: '#25292e',
         flex: 1,
     },
@@ -240,92 +234,123 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 10,
-    },
-    topTitle: {
-        color: 'white',
-        fontSize: 18,
+        marginBottom: 16,
+      },
+      topTitle: {
+        color: '#fff',
+        fontSize: 22,
         fontWeight: 'bold',
-    },
-    topSubtitle: {
-        color: '#bbb',
-        fontSize: 12,
-    },
-    topIcons: {
+      },
+      topSubtitle: {
+        color: '#8E8E93',
+        fontSize: 14,
+      },
+      topIcons: {
         flexDirection: 'row',
         alignItems: 'center',
-    },
-    contactsLabel: {
-        color: '#aaa',
+      },
+      contactsLabel: {
+        color: '#A1A1AA',
         fontSize: 13,
-        marginVertical: 10,
-    },
-    userCtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 20,
-    },
-    actionsContainer: {
+        fontWeight: '600',
+        marginTop: 18,
+        marginBottom: 8,
+        marginLeft: 4,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+      },
+      actionsContainer: {
         marginTop: 10,
-        marginBottom: 10,
-    },
-    actionBtn: {
+        marginBottom: 16,
+      },
+      actionBtn: {
         flexDirection: 'row',
         alignItems: 'center',
+        backgroundColor: '#2C2C2E',
         paddingVertical: 12,
-    },
-    iconWrap: {
+        paddingHorizontal: 14,
+        borderRadius: 14,
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 3,
+        elevation: 3,
+      },
+      iconWrap: {
         width: 40,
         height: 40,
-        backgroundColor: '#007b5f',
         borderRadius: 20,
+        backgroundColor: '#3A3A3C',
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 15,
-    },
-    qrWrap: {
-        marginLeft: 10,
-    },
-    actionText: {
-        color: 'white',
-        fontSize: 16,
+        marginRight: 12,
+      },
+      qrWrap: {
+        marginLeft: 8,
+      },
+      actionText: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontWeight: '600',
         flex: 1,
-    },
-    msgCtn: {
-        marginLeft: 10,
+      },
+      userCtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 8,
+        borderRadius: 12,
+        backgroundColor: '#2C2C2E',
+        marginBottom: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+      },
+      msgCtn: {
+        marginLeft: 12,
         flex: 1,
-    },
-    name: {
-        fontWeight: 'bold',
-        fontSize: 17,
-        color: 'white',
-    },
-    subtext: {
-        fontSize: 13,
-        color: '#aaa',
-    },
-    image: {
-        width: 55,
-        height: 55,
-    },
-    inviteBtn: {
-        backgroundColor: 'green',
-        color: 'white',
-        paddingHorizontal: 12,
+      },
+      name: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#E5E5EA',
+        marginBottom: 2,
+      },
+      subtext: {
+        fontSize: 12,
+        color: '#8E8E93',
+      },
+      image: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        borderWidth: 1.5,
+        borderColor: '#3A3A3C',
+        backgroundColor: '#444',
+      },
+      inviteBtn: {
+        backgroundColor: '#25D366',
+        color: '#000',
+        paddingHorizontal: 14,
         paddingVertical: 6,
-        borderRadius: 6,
-        fontSize: 14,
-        marginRight: 10,
-    },
-    loadingContainer: {
+        borderRadius: 16,
+        fontSize: 12,
+        fontWeight: '600',
+        overflow: 'hidden',
+      },
+      loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    loadingText: {
+        backgroundColor: '#1C1C1E',
+      },
+      loadingText: {
         marginTop: 10,
-        color: '#cbd5c0',
+        color: '#25D366',
         fontSize: 16,
-    },
-});
+        fontWeight: '500',
+      },
+    });

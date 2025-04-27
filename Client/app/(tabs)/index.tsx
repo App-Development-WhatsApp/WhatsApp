@@ -8,15 +8,15 @@ import {
   TextInput,
   ActivityIndicator,
   StatusBar,
-} from 'react-native';
-import { useNetInfo } from '@react-native-community/netinfo';
-import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useState, useEffect, useRef } from 'react';
-import { getUser } from '@/Services/LocallyData';
-import { getAllUsers, getChats } from '@/Database/ChatQuery';
-import { ChatItem } from '@/types/ChatsType';
-import showToast from '@/utils/ToastHandler';
+} from "react-native";
+import { useNetInfo } from "@react-native-community/netinfo";
+import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useState, useEffect, useRef } from "react";
+import { getUser } from "@/Services/LocallyData";
+import { getAllUsers, getChats } from "@/Database/ChatQuery";
+import { ChatItem } from "@/types/ChatsType";
+import showToast from "@/utils/ToastHandler";
 
 export default function Chat() {
   const router = useRouter();
@@ -25,21 +25,30 @@ export default function Chat() {
   const loading = useRef(false);
   const userData = useRef(null);
   const [chats, setChats] = useState<ChatItem[]>([]);
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState("");
   const [filteredChats, setFilteredChats] = useState<ChatItem[]>([]);
 
   const dataFetchedRef = useRef(false);
-
 
   const fetchChats = async () => {
     if (dataFetchedRef.current) {
       return;
     }
-    loading.current = true
+    loading.current = true;
+    // console.log('Fetching chats...', userData.current);
+    const Chats: ChatItem[] = await getChats(userData.current._id);
+    setChats(Chats);
+    console.log(Chats);
+    setFilteredChats(Chats);
+    loading.current = false;
+    dataFetchedRef.current = true;
+  };
+
+  useEffect(() => {
     const checkUser = async () => {
       const user = await getUser();
       if (!user) {
-        router.push('/login');
+        router.push("/login");
       }
       // showToast('success', 'top', `Hi ${user.username}`, 'Wellcome to Chat Screen');
       userData.current = user;
@@ -47,16 +56,6 @@ export default function Chat() {
     if (!userData.current) {
       checkUser();
     }
-    console.log('Fetching chats...', userData.current);
-    const Chats: ChatItem[] = await getChats(userData.current._id);
-    setChats(Chats);
-    console.log(Chats)
-    setFilteredChats(Chats);
-    loading.current = false;
-    dataFetchedRef.current = true;
-  };
-
-  useEffect(() => {
     fetchChats();
     const intervalId = setInterval(() => {
       fetchChats();
@@ -66,36 +65,43 @@ export default function Chat() {
 
   const handleSearch = async (searchValue: string) => {
     setSearchText(searchValue);
-    if (searchValue.trim() === '') {
+    if (searchValue.trim() === "") {
       setFilteredChats(chats);
     } else {
       const filteredData = chats.filter((chat: ChatItem) =>
-        (chat.name ?? '').toLowerCase().includes(searchValue.toLowerCase())
+        (chat.name ?? "").toLowerCase().includes(searchValue.toLowerCase())
       );
       setFilteredChats(filteredData);
     }
   };
 
   const formatTime = (timeString: string) => {
-    if (!timeString) return '';
+    if (!timeString) return "";
     const date = new Date(timeString);
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
 
     if (isToday) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     } else {
-      return date.toLocaleDateString([], { day: 'numeric', month: 'short' });
+      return date.toLocaleDateString([], { day: "numeric", month: "short" });
     }
   };
-
 
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor="#0e0e10" barStyle="light-content" />
 
       <View style={styles.searchCtn}>
-        <Feather name="search" size={20} color="#aaa" style={styles.searchIcon} />
+        <Feather
+          name="search"
+          size={20}
+          color="#aaa"
+          style={styles.searchIcon}
+        />
         <TextInput
           style={styles.searchInp}
           placeholder="Search chats or Ask Meta AI..."
@@ -110,53 +116,64 @@ export default function Chat() {
           <ActivityIndicator size="large" color="#5efc82" />
           <Text style={styles.loadingText}>Loading chats...</Text>
         </View>
-      ) : (
-        filteredChats.length > 0 ? (
-          <FlatList
-            data={filteredChats}
-            showsVerticalScrollIndicator={false}
-            renderItem={({ item }: { item: ChatItem }) => (
-              <TouchableOpacity
-                style={styles.chatItem}
-                onPress={() => router.push({ pathname: "/chat/[id]", params: { id: item.jid } })}
-                activeOpacity={0.8}
-              >
-                <Image source={{ uri: item.image || "" }} style={styles.profileImage} />
+      ) : filteredChats.length > 0 ? (
+        <FlatList
+          data={filteredChats}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }: { item: ChatItem }) => (
+            <TouchableOpacity
+              style={styles.chatItem}
+              onPress={() =>
+                router.push({
+                  pathname: "/chat/[id]",
+                  params: { id: item.jid },
+                })
+              }
+              activeOpacity={0.8}
+            >
+              <Image
+                source={{ uri: item.image || "" }}
+                style={styles.profileImage}
+              />
 
-                <View style={styles.chatDetails}>
-                  <View style={styles.chatTopRow}>
-                    <Text style={styles.chatName} numberOfLines={1}>{item.name}</Text>
-                    <Text style={styles.chatTime}>
-                      {formatTime(item.last_message_time)}
-                    </Text>
-                  </View>
-
-                  <View style={styles.chatBottomRow}>
-                    <Text style={styles.chatMessage} numberOfLines={1}>
-                      {item.last_message}
-                    </Text>
-
-                    {item.unread_count == 0 && (
-                      <View style={styles.unreadBadge}>
-                        <Text style={styles.unreadText}>
-                          {item.unread_count}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
+              <View style={styles.chatDetails}>
+                <View style={styles.chatTopRow}>
+                  <Text style={styles.chatName} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text style={styles.chatTime}>
+                    {formatTime(item.last_message_time)}
+                  </Text>
                 </View>
-              </TouchableOpacity>
-            )}
-            keyExtractor={(item, index) => `chat-${item.jid || index}`}
-            contentContainerStyle={{ paddingBottom: 80 }}
-          />
 
-        ) : (
-          <Text style={styles.emptyText}>No chats yet. Start a new conversation!</Text>
-        )
+                <View style={styles.chatBottomRow}>
+                  <Text style={styles.chatMessage} numberOfLines={1}>
+                    {item.last_message}
+                  </Text>
+
+                  {item.unread_count == 0 && (
+                    <View style={styles.unreadBadge}>
+                      <Text style={styles.unreadText}>{item.unread_count}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </TouchableOpacity>
+          )}
+          keyExtractor={(item, index) => `chat-${item.jid || index}`}
+          contentContainerStyle={{ paddingBottom: 80 }}
+        />
+      ) : (
+        <Text style={styles.emptyText}>
+          No chats yet. Start a new conversation!
+        </Text>
       )}
 
-      <TouchableOpacity style={styles.newChatButton} onPress={() => router.push('/Contacts')} activeOpacity={0.8}>
+      <TouchableOpacity
+        style={styles.newChatButton}
+        onPress={() => router.push("/Contacts")}
+        activeOpacity={0.8}
+      >
         <MaterialCommunityIcons name="message-plus" size={30} color="#fff" />
       </TouchableOpacity>
     </View>
@@ -166,19 +183,19 @@ export default function Chat() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#25292e',
+    backgroundColor: "#25292e",
     paddingHorizontal: 15,
     paddingTop: 10,
   },
   searchCtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1a1a1d',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1a1a1d",
     borderRadius: 30,
     paddingHorizontal: 15,
     paddingVertical: 8,
     marginBottom: 20,
-    shadowColor: '#5efc82',
+    shadowColor: "#5efc82",
     shadowOpacity: 0.08,
     shadowRadius: 10,
     elevation: 5,
@@ -189,28 +206,28 @@ const styles = StyleSheet.create({
   searchInp: {
     flex: 1,
     fontSize: 16,
-    color: '#e0e0e0',
+    color: "#e0e0e0",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     marginTop: 10,
-    color: '#888',
+    color: "#888",
     fontSize: 16,
   },
   emptyText: {
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 50,
     fontSize: 16,
-    color: '#777',
+    color: "#777",
   },
   chatItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1f1f23',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1f1f23",
     padding: 12,
     borderRadius: 16,
     marginBottom: 15,
@@ -219,64 +236,64 @@ const styles = StyleSheet.create({
     width: 55,
     height: 55,
     borderRadius: 27.5,
-    backgroundColor: '#333',
+    backgroundColor: "#333",
   },
   chatDetails: {
     flex: 1,
     marginLeft: 12,
   },
   chatTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   chatName: {
     fontSize: 17,
-    fontWeight: '600',
-    color: '#fff',
-    maxWidth: '70%',
+    fontWeight: "600",
+    color: "#fff",
+    maxWidth: "70%",
   },
   chatTime: {
     fontSize: 12,
-    color: '#aaa',
+    color: "#aaa",
   },
   chatBottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 4,
   },
   chatMessage: {
     fontSize: 14,
-    color: '#ccc',
+    color: "#ccc",
     flex: 1,
     marginRight: 10,
   },
   unreadBadge: {
-    backgroundColor: '#25D366',
+    backgroundColor: "#25D366",
     minWidth: 20,
     height: 20,
     borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 6,
   },
   unreadText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   newChatButton: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 25,
     right: 25,
     width: 65,
     height: 65,
-    backgroundColor: '#25D366',
+    backgroundColor: "#25D366",
     borderRadius: 32.5,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#5efc82',
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#5efc82",
     shadowOpacity: 0.5,
     shadowRadius: 8,
     elevation: 8,
