@@ -94,6 +94,21 @@ CREATE TABLE IF NOT EXISTS community_members (
   FOREIGN KEY (community_id) REFERENCES communities (id),
   FOREIGN KEY (member_jid) REFERENCES users (jid)
 );
+-- List table
+CREATE TABLE IF NOT EXISTS lists (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT,
+  last_time TEXT
+);
+
+-- List members table
+CREATE TABLE IF NOT EXISTS list_members (
+  list_id INTEGER,
+  member_jid TEXT,
+  PRIMARY KEY (list_id, member_jid),
+  FOREIGN KEY (list_id) REFERENCES lists (id),
+  FOREIGN KEY (member_jid) REFERENCES users (jid)
+);
   `);
 
 

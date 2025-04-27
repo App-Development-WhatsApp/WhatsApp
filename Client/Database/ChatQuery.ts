@@ -709,3 +709,65 @@ export const insertCommunityMember = async (communityId: number, userId: string)
     console.error('Error inserting community member:', error);
   }
 }
+
+// Create List with Members
+export const createListWithMembers = async (listName: string, memberJids: string[]) => {
+  const db = await getDB();
+  const last_time = new Date().toISOString();
+
+  await db.execAsync('BEGIN TRANSACTION;');
+
+  try {
+    // Insert into lists table
+    const insertListStmt = await db.prepareAsync(`
+      INSERT INTO lists (name, last_time) VALUES (?, ?)
+    `);
+    const { lastInsertRowId } = await insertListStmt.executeAsync([listName, last_time]);
+    await insertListStmt.finalizeAsync();
+
+    const listId = lastInsertRowId;
+
+    // Prepare the statement once for all members
+    const insertMemberStmt = await db.prepareAsync(`
+      INSERT OR IGNORE INTO list_members (list_id, member_jid) VALUES (?, ?)
+    `);
+
+    for (const memberJid of memberJids) {
+      await insertMemberStmt.executeAsync([listId, memberJid]);
+    }
+
+    await insertMemberStmt.finalizeAsync();
+
+    await db.execAsync('COMMIT;');
+    console.log('List and members added successfully!');
+  } catch (error) {
+    await db.execAsync('ROLLBACK;');
+    console.error('Failed to create list with members:', error);
+  }
+};
+
+
+export const deleteListAndMembers = async (listId: number) => {
+  const db = await getDB();
+  try {
+    await db.execAsync('BEGIN TRANSACTION;');
+
+    const deleteMembersStatement = await db.prepareAsync(`
+      DELETE FROM list_members WHERE list_id = ?
+    `);
+    await deleteMembersStatement.executeAsync([listId]);
+    await deleteMembersStatement.finalizeAsync();
+
+    const deleteListStatement = await db.prepareAsync(`
+      DELETE FROM lists WHERE id = ?
+    `);
+    await deleteListStatement.executeAsync([listId]);
+    await deleteListStatement.finalizeAsync();
+
+    await db.execAsync('COMMIT;');
+    console.log('List and its members deleted successfully!');
+  } catch (error) {
+    await db.execAsync('ROLLBACK;');
+    console.error('Error deleting list and members:', error);
+  }
+};

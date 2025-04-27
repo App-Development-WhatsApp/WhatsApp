@@ -2,7 +2,7 @@ import { getUser } from "@/Services/LocallyData";
 import { getMessages, getUserInfoByJid, insertMessage, InsertMessageParams, markMessageAsViewed, SaveUser, updateMessageStatus } from "@/Database/ChatQuery";
 import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import { useEffect, useRef, useState, useLayoutEffect } from "react";
-import { View, Text, FlatList, StyleSheet, TextInput, TouchableOpacity, Modal, Linking } from "react-native";
+import { View, Text, FlatList, StyleSheet, TextInput, TouchableOpacity, Modal, Linking, Button } from "react-native";
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Contacts from 'expo-contacts';
@@ -14,6 +14,10 @@ import { Image } from "react-native";
 import showToast from "@/utils/ToastHandler";
 import { MessageItem } from "@/types/ChatsType";
 import { Video } from "expo-av";
+import { downloadAndSharePDF } from "../../components/PDFViewer"; // Adjust the import path as needed
+
+
+
 export default function ChatScreen() {
   const { sendMessage, registerReceiveMessage, unregisterReceiveMessage } = useSocket();
   const [mediaModalVisible, setMediaModalVisible] = useState(false);
@@ -115,7 +119,7 @@ export default function ChatScreen() {
       console.log("Received message:", message);
       message = { ...message, status: "sent" }
 
-      const messageId = await insertMessage(message);
+      const messageId = await insertMessage({...message,isCurrentUserSender:false});
 
       const addMessage = {
         id: messageId,
@@ -195,7 +199,7 @@ export default function ChatScreen() {
       setMessages(prev => [...prev, addMessage]);
       let urls: string[] = [];
       if (selectedFiles && selectedFiles?.length > 0) {
-        const response = await sendFile(selectedFiles.map((file,index) => ({ uri: file, fileName: selectedFileNames[index] })));
+        const response = await sendFile(selectedFiles.map((file, index) => ({ uri: file, fileName: selectedFileNames[index] })));
         if (response?.success) {
           urls = response.response;
           messageData.fileUrls = urls;
@@ -253,14 +257,14 @@ export default function ChatScreen() {
       console.log("Selected Image:", image);
     }
   };
-  
+
   const pickDocument = async (): Promise<void> => {
     const result = await DocumentPicker.getDocumentAsync({
       type: '*/*',
       copyToCacheDirectory: true,
       multiple: false,
     });
-    
+
     if (!result.canceled && result.assets?.length > 0) {
       const file = result.assets[0];
       setSelectedFile(prevFiles => (prevFiles ? [...prevFiles, file.uri] : [file.uri]));
@@ -311,9 +315,10 @@ export default function ChatScreen() {
       // If it's a PDF
       return (
         <TouchableOpacity onPress={() => Linking.openURL(file)}>
-          <Text style={{ width: 50, height: 50, textAlign: 'center', backgroundColor: '#ccc', borderRadius: 5 }}>
-            PDF
-          </Text>
+          <Button
+            title="Open PDF"
+            onPress={() => downloadAndSharePDF(file)}  // Call the function on press
+          />
         </TouchableOpacity>
       );
     }
