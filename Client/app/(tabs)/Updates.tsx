@@ -56,7 +56,7 @@ export default function UpdatesScreen() {
 
       router.push({
         pathname: '/status/uploadstatus',
-        params: { uri, type }, // Pass uri and type to the upload status page
+        params: { uri: encodeURIComponent(uri), type }, // Pass uri and type to the upload status page
       });
     }
   };
