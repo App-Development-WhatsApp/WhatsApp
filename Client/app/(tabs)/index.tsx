@@ -10,9 +10,10 @@ import {
   StatusBar,
 } from "react-native";
 import { useNetInfo } from "@react-native-community/netinfo";
+import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback  } from "react";
 import { getUser } from "@/Services/LocallyData";
 import { getAllUsers, getChats } from "@/Database/ChatQuery";
 import { ChatItem } from "@/types/ChatsType";
@@ -27,18 +28,17 @@ export default function Chat() {
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [searchText, setSearchText] = useState("");
   const [filteredChats, setFilteredChats] = useState<ChatItem[]>([]);
+  // const [selectedTab, setSelectedTab] = useState("All");
+  // const tabs = ["All", "Unread", "+"];
+
 
   const dataFetchedRef = useRef(false);
 
   const fetchChats = async () => {
-    if (dataFetchedRef.current) {
-      return;
-    }
     loading.current = true;
     // console.log('Fetching chats...', userData.current);
     const Chats: ChatItem[] = await getChats(userData.current._id);
     setChats(Chats);
-    console.log(Chats);
     setFilteredChats(Chats);
     loading.current = false;
     dataFetchedRef.current = true;
@@ -62,6 +62,13 @@ export default function Chat() {
     }, 5000);
     return () => clearInterval(intervalId);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchChats();
+    }, [])
+  );
+  
 
   const handleSearch = async (searchValue: string) => {
     setSearchText(searchValue);
@@ -110,6 +117,41 @@ export default function Chat() {
           value={searchText}
         />
       </View>
+
+      {/* <View style={styles.tabsContainer}>
+        {tabs.map((tab, index) => (
+          <TouchableOpacity
+            key={index}
+            style={[
+              styles.tabItem,
+              selectedTab === tab && tab !== "+" && styles.selectedTabItem,
+            ]}
+            onPress={() => {
+              if (tab === "+") {
+                console.log("Add list");
+              } else {
+                setSelectedTab(tab);
+                if (tab === "All") {
+                  setFilteredChats(chats);
+                } else if (tab === "Unread") {
+                  const unreadChats = chats.filter((chat) => chat.unread_count > 0);
+                  setFilteredChats(unreadChats);
+                }
+              }
+            }}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                selectedTab === tab && tab !== "+" && styles.selectedTabText,
+              ]}
+            >
+              {tab}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View> */}
 
       {loading.current ? (
         <View style={styles.loadingContainer}>
@@ -208,6 +250,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#e0e0e0",
   },
+  tabsContainer: {
+    flexDirection: "row",
+    marginBottom: 15,
+  },
+  tabItem: {
+    backgroundColor: "#1a1a1d",
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 6,
+    marginRight: 10,
+  },
+  selectedTabItem: {
+    backgroundColor: "#25D366",
+  },
+  tabText: {
+    color: "#aaa",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  selectedTabText: {
+    color: "#000",
+    fontWeight: "600",
+  },  
   loadingContainer: {
     flex: 1,
     justifyContent: "center",

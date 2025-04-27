@@ -50,13 +50,13 @@ export default function UpdatesScreen() {
 
     setShowPicker(false);
     if (!result.canceled) {
-      const asset = result.assets[0]; // Getting the first media asset
+      const asset = result.assets[0];
       const uri = asset.uri;
-      const type = asset.type; // Type is either 'image' or 'video'
+      const type = asset.type;
 
       router.push({
         pathname: '/status/uploadstatus',
-        params: { uri: encodeURIComponent(uri), type }, // Pass uri and type to the upload status page
+        params: { uri: encodeURIComponent(uri), type },
       });
     }
   };
@@ -70,14 +70,14 @@ export default function UpdatesScreen() {
 
     setShowPicker(false);
     if (!result.canceled) {
-      const asset = result.assets[0]; // Getting the first media asset
+      const asset = result.assets[0];
       const uri = asset.uri;
-      const type = asset.type; // Type is either 'image' or 'video'
+      const type = asset.type;
       console.log('image:',uri)
 
       router.push({
         pathname: '/status/uploadstatus',
-        params: { uri: encodeURIComponent(uri), type }, // Pass uri and type to the upload status page
+        params: { uri: encodeURIComponent(uri), type },
       });
       console.log(uri, type);
     }
