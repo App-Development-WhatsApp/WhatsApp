@@ -109,8 +109,29 @@ export default function UploadStatus() {
   };
 
   const handleUploadStatus = () => {
-    console.log('Uploading:', selectedMedia);
+    const formattedMedia = selectedMedia.map((item) => {
+      if (item.type === 'image') {
+        return {
+          uri: item.uri,
+          caption: item.caption,
+          start: 0,
+          end: 10,
+          duration: 10,
+        };
+      } else {
+        return {
+          uri: item.uri,
+          caption: item.caption,
+          start: startTime,
+          end: endTime,
+          duration: endTime - startTime,
+        };
+      }
+    });
+  
+    console.log('Uploading Status:', formattedMedia);
   };
+  
 
   const togglePlayPause = async () => {
     const video = videoRef.current;
