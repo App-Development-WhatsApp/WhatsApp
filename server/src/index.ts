@@ -83,7 +83,7 @@ io.on("connection", (socket: Socket) => {
     });
 
     socket.on("callIncoming", (props:{callerId: string, callerName: string, callerImage: string, receiverId: string}) => {
-        const receiverSocketId = onlineUsers.get(props.callerId);
+        const receiverSocketId = onlineUsers.get(props.receiverId);
         const callerId=props.callerId
         const callerName=props.callerName
         const callerImage=props.callerImage
