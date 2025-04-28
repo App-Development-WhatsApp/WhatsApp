@@ -4,6 +4,7 @@ import {
   Text,
   FlatList,
   Image,
+  Modal,
   StyleSheet,
   TouchableOpacity,
 } from "react-native";
@@ -16,6 +17,12 @@ const CallsScreen = () => {
   const router = useRouter();
   const [users, setUsers] = useState<UserWithCallDetails[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [selectedUser, setSelectedUser] = useState<UserWithCallDetails | null>(
+    null
+  );
+  const [callHistory, setCallHistory] = useState<any[]>([]);
+  const [modalVisible, setModalVisible] = useState<boolean>(false);
+  const [historyLoading, setHistoryLoading] = useState<boolean>(false);
 
   useEffect(() => {
     setLoading(true);
@@ -23,10 +30,35 @@ const CallsScreen = () => {
       try {
         const data: UserWithCallDetails[] = await GetUsersInCalls();
         console.log("data", data);
-        setUsers(data); // Set users fetched from the database
 
-        // const temp=await GetCallHistoryByUser("680e0ebb4d18a7c0b4cac9ca");
-        // console.log(temp)
+        const enrichedUsers = await Promise.all(
+          data.map(async (user) => {
+            try {
+              const history = await GetCallHistoryByUser(user.jid);
+              if (history.length > 0) {
+                const latestCall = history.sort(
+                  (a: any, b: any) =>
+                    new Date(b.start_time).getTime() -
+                    new Date(a.start_time).getTime()
+                )[0];
+                return { ...user, last_call_time: latestCall.start_time };
+              }
+              return { ...user, last_call_time: null };
+            } catch {
+              return { ...user, last_call_time: null };
+            }
+          })
+        );
+
+        const sortedUsers = enrichedUsers.sort((a, b) => {
+          if (!a.last_call_time || !b.last_call_time) return 0;
+          return (
+            new Date(b.last_call_time).getTime() -
+            new Date(a.last_call_time).getTime()
+          );
+        });
+
+        setUsers(sortedUsers);
       } catch (err) {
         console.error(err);
       } finally {
@@ -35,11 +67,33 @@ const CallsScreen = () => {
     };
     fetchCalls();
   }, []);
+
   useFocusEffect(
     useCallback(() => {
       GetUsersInCalls();
     }, [])
   );
+
+  const openHistoryModal = async (user: UserWithCallDetails) => {
+    setSelectedUser(user);
+    setModalVisible(true);
+    setHistoryLoading(true);
+    try {
+      const history = await GetCallHistoryByUser(user.jid);
+
+      // 🔥 Sort the history here
+      const sortedHistory = history.sort(
+        (a: any, b: any) =>
+          new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+      );
+
+      setCallHistory(sortedHistory);
+    } catch (error) {
+      console.error("Error fetching call history:", error);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   const handleCalling = async (user: UserItem) => {
     console.log("Calling");
@@ -62,7 +116,11 @@ const CallsScreen = () => {
   }
 
   const renderItem = ({ item }: { item: UserWithCallDetails }) => (
-    <TouchableOpacity key={item.jid} style={styles.callItem}>
+    <TouchableOpacity
+      key={item.jid}
+      style={styles.callItem}
+      onPress={() => openHistoryModal(item)}
+    >
       <Image
         source={{ uri: item.image || "https://example.com/avatar.jpg" }}
         style={styles.avatar}
@@ -114,6 +172,62 @@ const CallsScreen = () => {
         keyExtractor={(item) => item.jid}
         contentContainerStyle={styles.list}
       />
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPressOut={() => setModalVisible(false)}
+          style={styles.modalBackground}
+        >
+          <TouchableOpacity activeOpacity={1} style={styles.bottomDrawer}>
+            <View style={styles.handleBar} />
+            <Text style={styles.modalTitle}>
+              {selectedUser?.name}'s Call History
+            </Text>
+            {historyLoading ? (
+              <Text style={styles.loadingText}>Loading...</Text>
+            ) : callHistory.length === 0 ? (
+              <Text style={styles.noHistoryText}>No call history found.</Text>
+            ) : (
+              <FlatList
+                data={callHistory}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity style={styles.historyItem}>
+                    <MaterialIcons
+                      name={item.call_type === "voice" ? "phone" : "video-call"}
+                      size={20}
+                      color={
+                        item.call_status === "rejected"
+                          ? "red"
+                          : item.call_status === "accepted"
+                          ? "green"
+                          : "orange"
+                      }
+                      style={styles.callIcon}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.historyText}>
+                        {item.call_type === "voice"
+                          ? "Voice Call"
+                          : "Video Call"}
+                      </Text>
+                      <Text style={styles.callSubText}>
+                        {item.call_status} •{" "}
+                        {new Date(item.start_time).toLocaleString()}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+              />
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -168,6 +282,62 @@ const styles = StyleSheet.create({
     color: "gray",
     marginLeft: 6,
     textTransform: "capitalize",
+  },
+  modalBackground: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  bottomDrawer: {
+    backgroundColor: "#222", // modern dark
+    width: "100%",
+    height: "75%", // slight reduction
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  handleBar: {
+    width: 50,
+    height: 5,
+    backgroundColor: "#666",
+    borderRadius: 3,
+    alignSelf: "center",
+    marginBottom: 15,
+  },
+  modalTitle: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  loadingText: {
+    color: "gray",
+    textAlign: "center",
+  },
+  noHistoryText: {
+    color: "gray",
+    textAlign: "center",
+  },
+  historyItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderColor: "#333",
+  },
+  callIcon: {
+    marginRight: 15,
+  },
+  historyText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  callSubText: {
+    color: "#bbb",
+    fontSize: 13,
+    marginTop: 2,
   },
 });
 

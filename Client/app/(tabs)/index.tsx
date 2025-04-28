@@ -191,7 +191,7 @@ export default function Chat() {
                     {item.last_message}
                   </Text>
 
-                  {item.unread_count == 0 && (
+                  {item.unread_count !== 0 && (
                     <View style={styles.unreadBadge}>
                       <Text style={styles.unreadText}>{item.unread_count}</Text>
                     </View>

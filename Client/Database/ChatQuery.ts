@@ -118,20 +118,27 @@ export const insertMessage = async ({
 };
 
 
-export const updateMessageStatus = async (messageId: any, newStatus: string) => {
+export const updateMessageStatus = async (messageId: any, newStatus: string, urls?: string[]) => {
   try {
     const db = await getDB();
     console.log('🔄 Updating message status...', messageId);
 
-    const preparedUpdate = await db.prepareAsync(
-      `UPDATE messages 
-       SET status = ? 
-       WHERE id = ?`
-    );
+    // Build dynamic update query based on whether URLs exist
+    let query = `UPDATE messages SET status = ?`;
+    let params: any[] = [newStatus];
 
-    await preparedUpdate.executeAsync([newStatus, messageId]);
+    if (urls && urls.length > 0) {
+      query += `, file_urls = ?`;
+      params.push(JSON.stringify(urls)); // Store urls as JSON string
+    }
+
+    query += ` WHERE id = ?`;
+    params.push(messageId);
+
+    const preparedUpdate = await db.prepareAsync(query);
+    await preparedUpdate.executeAsync(params);
     await preparedUpdate.finalizeAsync();
-    console.log(`✅ Message status updated to ${newStatus}`);
+    console.log(`✅ Message status updated to ${newStatus}${urls.length > 0 ? ' and file_urls ' : ''}`);
 
     // Now fetch the updated message
     const preparedSelect = await db.prepareAsync(
@@ -144,7 +151,7 @@ export const updateMessageStatus = async (messageId: any, newStatus: string) => 
     if (result && result.rows && result.rows._array && result.rows._array.length > 0) {
       const updatedMessage = result.rows._array[0];
       console.log('✅ Updated message fetched:', updatedMessage);
-      return updatedMessage; // ✅ returning updated message
+      return updatedMessage;
     } else {
       console.warn('⚠️ No message found with id:', messageId);
       return null;
@@ -155,6 +162,7 @@ export const updateMessageStatus = async (messageId: any, newStatus: string) => 
     return null;
   }
 };
+
 
 // export const getChats = async (): Promise<ChatItem[]> => {
 //   const db: any = await getDB();

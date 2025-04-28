@@ -78,7 +78,7 @@ export default function Communities() {
   const loadCommunities = async () => {
     try {
       const community_info: CommunityItem[] = await getAllCommunities();
-      console.log(community_info);
+      // console.log(community_info);
       setCommunities(community_info);
     } catch (error) {
       console.error("Error loading communities:", error);
@@ -252,8 +252,9 @@ export default function Communities() {
       }
     };
     const handleSend = async () => {
-      if(!selectedCommunityIndex)return;
+      if(selectedCommunityIndex === null)return;
       const fetchedMembers = await getCommunityMembers(communities[selectedCommunityIndex].id);
+      // console.log(selectedCommunityIndex,textInput,communities[selectedCommunityIndex].id,"-----",fetchedMembers)
       if ( fetchedMembers.length===0 || (!textInput.trim() && !media)) return;
 
       let uploadedUrls: string[] = [];
@@ -269,6 +270,7 @@ export default function Communities() {
           ]);
           if (response?.success) {
             uploadedUrls = response.response; // Save the uploaded file URLs
+            console.log(uploadedUrls)
           } else {
             console.error("File upload failed");
             return;
@@ -290,6 +292,7 @@ export default function Communities() {
               Sender_image: userData.current?.image || null,
               Sender_name: userData.current?.username || null,
             };
+            console.log(messageData)
 
             const messageId = await insertMessage(messageData);
             // Now simply update the status (no need to upload again)
@@ -435,7 +438,7 @@ export default function Communities() {
 
         <View style={styles.messageBox}>
           <View style={styles.messageRow}>
-            <MaterialIcons name="campaign" size={20} color="#00A884" />
+            <MaterialIcons name="campaign" size={20} color="#25D366" />
             <Text style={styles.messageTitle}>Announcements</Text>
             <Text style={styles.time}>3:15 am</Text>
           </View>
@@ -545,7 +548,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: -2,
     right: -2,
-    backgroundColor: "#00A884",
+    backgroundColor: "#25D366",
     borderRadius: 10,
     padding: 2,
   },
@@ -682,8 +685,9 @@ const announcementStyles = StyleSheet.create({
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
     backdropFilter: "blur(10px)", // <-- only works on web, mobile equivalent handled by glassy color
-    borderColor: "#00A884",
+    borderColor: "#25D366",
     borderWidth: 1,
+    borderBottomWidth: 0
   },
   headerRow: {
     flexDirection: "row",
@@ -714,7 +718,7 @@ const announcementStyles = StyleSheet.create({
     marginBottom: 20,
   },
   sendButton: {
-    backgroundColor: "#00A884",
+    backgroundColor: "#25D366",
     padding: 15,
     borderRadius: 20,
     alignItems: "center",

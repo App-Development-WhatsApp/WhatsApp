@@ -25,7 +25,12 @@ import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import * as Contacts from "expo-contacts";
 import { useNetInfo } from "@react-native-community/netinfo";
-import { Ionicons, FontAwesome, MaterialIcons } from "@expo/vector-icons";
+import {
+  Ionicons,
+  FontAwesome,
+  MaterialIcons,
+  Feather,
+} from "@expo/vector-icons";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { getUserById, sendFile } from "@/Services/Api";
 import { useSocket } from "@/Context/SocketContext";
@@ -33,6 +38,7 @@ import { Image } from "react-native";
 import showToast from "@/utils/ToastHandler";
 import { MessageItem, UserItem } from "@/types/ChatsType";
 import { Video } from "expo-av";
+import MediaViewer from "@/components/MediaViewer";
 
 export default function ChatScreen() {
   const { sendMessage, registerReceiveMessage, unregisterReceiveMessage } =
@@ -51,6 +57,11 @@ export default function ChatScreen() {
   const [onetime, setonetime] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const User = useRef<any>(null);
+  const [mediaViewerVisible, setMediaViewerVisible] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<{
+    fileUrl: string;
+    fileType: "image" | "video";
+  } | null>(null);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -273,7 +284,7 @@ export default function ChatScreen() {
           urls = response.response;
           messageData.fileUrls = urls;
           sendMessage(messageData);
-          updateMessageStatus(messageId, "sent");
+          updateMessageStatus(messageId, "sent",urls);
           console.log(messageId, "coming");
           setMessages((prev) =>
             prev.map((msg) =>
@@ -364,6 +375,7 @@ export default function ChatScreen() {
       );
       console.log("Picked Document:", file);
     }
+    setMediaModalVisible(false);
   };
 
   const pickContact = async (): Promise<void> => {
@@ -420,17 +432,20 @@ export default function ChatScreen() {
       );
     }
 
-    // if (["pdf"].includes(fileExtension || "")) {
-    //   // If it's a PDF
-    //   return (
-    //     <TouchableOpacity onPress={() => Linking.openURL(file)}>
-    //       <Button
-    //         title="Open PDF"
-    //         onPress={() => downloadAndSharePDF(file)} // Call the function on press
-    //       />
-    //     </TouchableOpacity>
-    //   );
-    // }
+    if (["pdf"].includes(fileExtension || "")) {
+      return (
+        <TouchableOpacity
+          style={{
+            borderWidth: 1,
+            borderColor: "#25D366",
+            borderRadius: 5,
+            padding: 2,
+          }}
+        >
+          <Feather name="file-text" size={40} color="gray" />
+        </TouchableOpacity>
+      );
+    }
 
     // Default for unsupported file types
     return <Text>Unsupported File</Text>;
@@ -440,6 +455,7 @@ export default function ChatScreen() {
     const isSender = item.sender_jid === userData.current?._id;
     const urls = JSON.parse(item.file_urls || "[]");
     const fileTypes = JSON.parse(item.file_types || "[]");
+    console.log(urls)
 
     const handleOneTimeView = async () => {
       console.log("One-time view clicked:", item.id);
@@ -496,24 +512,39 @@ export default function ChatScreen() {
                 urls.map((fileUrl: string, index: number) => {
                   const fileType = fileTypes?.[index];
 
-                  if (fileType?.startsWith("image/")) {
+                  if (fileType?.startsWith("image")) {
                     return (
-                      <Image
+                      <TouchableOpacity
                         key={index}
-                        source={{ uri: fileUrl }}
-                        style={styles.fileImage}
-                      />
+                        onPress={() => {
+                          setSelectedMedia({ fileUrl, fileType: "image" });
+                          setMediaViewerVisible(true);
+                          console.log(fileUrl)
+                        }}
+                      >
+                        <Image
+                          source={{ uri: fileUrl }}
+                          style={styles.fileImage}
+                        />
+                      </TouchableOpacity>
                     );
                   } else if (fileType?.startsWith("video/")) {
                     return (
-                      <Video
+                      <TouchableOpacity
                         key={index}
-                        source={{ uri: fileUrl }}
-                        style={styles.fileImage}
-                        useNativeControls
-                        resizeMode="contain"
-                        shouldPlay={false}
-                      />
+                        onPress={() => {
+                          setSelectedMedia({ fileUrl, fileType: "video" });
+                          setMediaViewerVisible(true);
+                        }}
+                      >
+                        <Video
+                          source={{ uri: fileUrl }}
+                          style={styles.fileImage}
+                          useNativeControls
+                          resizeMode="contain"
+                          shouldPlay={false}
+                        />
+                      </TouchableOpacity>
                     );
                   } else if (fileType === "application/pdf") {
                     return (
@@ -553,7 +584,13 @@ export default function ChatScreen() {
 
           {/* Timestamp and Status */}
           <View style={styles.timeStatusRow}>
-            <Text style={styles.timestamp}> {new Date(item.timestamp).toLocaleTimeString([], {hour: "2-digit",minute: "2-digit",})} </Text>
+            <Text style={styles.timestamp}>
+              {" "}
+              {new Date(item.timestamp).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}{" "}
+            </Text>
 
             {isSender && (
               <View style={styles.statusIcon}>
@@ -577,8 +614,8 @@ export default function ChatScreen() {
   };
 
   const handleOneTime = () => {
-    setonetime(prev => !prev);
-    console.log(onetime)
+    setonetime((prev) => !prev);
+    console.log(onetime);
   };
 
   return (
@@ -644,7 +681,12 @@ export default function ChatScreen() {
           <TouchableOpacity onPress={handleOneTime} style={styles.iconButton}>
             <Image
               source={require("../../assets/images/onetime.png")}
-              style={{ width: 28, height: 28, resizeMode: "contain", tintColor:'white' }}
+              style={{
+                width: 28,
+                height: 28,
+                resizeMode: "contain",
+                tintColor: "white",
+              }}
             />
           </TouchableOpacity>
 
@@ -663,6 +705,18 @@ export default function ChatScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {selectedMedia && (
+        <MediaViewer
+          visible={mediaViewerVisible}
+          fileType={selectedMedia.fileType}
+          fileUrl={selectedMedia.fileUrl}
+          onClose={() => {
+            setMediaViewerVisible(false);
+            setSelectedMedia(null);
+          }}
+        />
+      )}
 
       {/* Media Modal */}
       <Modal
@@ -687,9 +741,12 @@ export default function ChatScreen() {
                 <Icon name="camera-alt" size={35} color="#fff" />
               </TouchableOpacity>
 
-              {/* <TouchableOpacity style={styles.iconCircle} onPress={pickDocument}>
-              <Icon name="insert-drive-file" size={28} color="#fff" />
-            </TouchableOpacity> */}
+              <TouchableOpacity
+                style={styles.iconCircle}
+                onPress={pickDocument}
+              >
+                <Icon name="insert-drive-file" size={28} color="#fff" />
+              </TouchableOpacity>
 
               <TouchableOpacity style={styles.iconCircle} onPress={pickContact}>
                 <Icon name="contact-phone" size={35} color="#fff" />
@@ -736,16 +793,16 @@ const styles = StyleSheet.create({
   messageBubble: {
     maxWidth: "75%",
     padding: 10,
-    borderRadius: 15,
+    borderRadius: 20,
     backgroundColor: "#333",
   },
   leftBubble: {
     backgroundColor: "#2f2f2f",
-    borderTopLeftRadius: 4,
+    borderTopLeftRadius: 2,
   },
   rightBubble: {
     backgroundColor: "#075e54",
-    borderTopRightRadius: 4,
+    borderTopRightRadius: 2,
   },
   messageText: {
     color: "#fff",

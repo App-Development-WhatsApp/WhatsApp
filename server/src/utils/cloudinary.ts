@@ -16,7 +16,7 @@ const uploadOnCloudinary = async (localFilePath: string, public_id?: string): Pr
       console.error("Either localFilePath or fileUrl must be provided.");
       return null;
     }
-    console.log("Uploading file to Cloudinary...",env.CLOUDINARY_CLOUD_NAME);
+    console.log("Uploading file to Cloudinary...",localFilePath,env.CLOUDINARY_CLOUD_NAME);
 
     // Upload the file to Cloudinary
     const uploadSource = localFilePath;
