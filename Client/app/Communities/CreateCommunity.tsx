@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  ScrollView
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter, useNavigation } from 'expo-router';
@@ -177,67 +178,67 @@ export default function CreateCommunity() {
       </TouchableOpacity>
 
       {openMemberSection && (
-        <View style={{ marginTop: 20 }}>
-          <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold', marginBottom: 10 }}>
-            Select Members
-          </Text>
+  <View style={{ marginTop: 20 }}>
+    <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold', marginBottom: 10 }}>
+      Select Members
+    </Text>
 
-          {users.current.length === 0 ? (
-            <Text style={{ color: '#888' }}>No users available</Text>
-          ) : (
-            users.current.map((user) => {
-              const isSelected = selectedMembers.includes(user.jid);
+    {users.current.length === 0 ? (
+      <Text style={{ color: '#888' }}>No users available</Text>
+    ) : (
+      <ScrollView style={{ maxHeight: 300 }}> {/* Add a max height so only list scrolls */}
+        {users.current.map((user) => {
+          const isSelected = selectedMembers.includes(user.jid);
 
-              return (
-                <TouchableOpacity
-                  key={user.id}
-                  onPress={() => toggleMemberSelection(user.jid)}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: 10,
-                    backgroundColor: '#333',
-                    borderRadius: 10,
-                    marginBottom: 8,
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Image
-                      source={user.image ? { uri: user.image } : require('../../assets/images/blank.jpeg')}
-                      style={{ width: 40, height: 40, borderRadius: 20, marginRight: 10 }}
-                    />
-                    <View>
-                      <Text style={{ color: 'white', fontSize: 16 }}>{user.name}</Text>
-                      <Text style={{ color: '#aaa', fontSize: 12 }}>{user.phone}</Text>
-                    </View>
-                  </View>
+          return (
+            <TouchableOpacity
+              key={user.id}
+              onPress={() => toggleMemberSelection(user.jid)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: 10,
+                backgroundColor: '#333',
+                borderRadius: 10,
+                marginBottom: 8,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Image
+                  source={user.image ? { uri: user.image } : require('../../assets/images/blank.jpeg')}
+                  style={{ width: 40, height: 40, borderRadius: 20, marginRight: 10 }}
+                />
+                <View>
+                  <Text style={{ color: 'white', fontSize: 16 }}>{user.name}</Text>
+                  <Text style={{ color: '#aaa', fontSize: 12 }}>{user.phone}</Text>
+                </View>
+              </View>
 
-                  {isSelected && (
-                    <AntDesign name="checkcircle" size={20} color="#25D366" />
-                  )}
-                </TouchableOpacity>
-              );
-            })
+              {isSelected && (
+                <AntDesign name="checkcircle" size={20} color="#25D366" />
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    )}
 
-          )}
+    <TouchableOpacity
+      onPress={() => setopenMemberSection(false)}
+      style={{
+        marginTop: 10,
+        backgroundColor: '#444',
+        padding: 10,
+        borderRadius: 10,
+        alignItems: 'center',
+      }}
+    >
+      <Text style={{ color: 'white' }}>Select</Text>
+    </TouchableOpacity>
+  </View>
+)}
 
-
-
-          <TouchableOpacity
-            onPress={() => setopenMemberSection(false)}
-            style={{
-              marginTop: 10,
-              backgroundColor: '#444',
-              padding: 10,
-              borderRadius: 10,
-              alignItems: 'center',
-            }}
-          >
-            <Text style={{ color: 'white' }}>Select</Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
 
 

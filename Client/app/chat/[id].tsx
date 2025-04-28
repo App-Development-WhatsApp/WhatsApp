@@ -479,7 +479,7 @@ export default function ChatScreen() {
             isSender ? styles.rightBubble : styles.leftBubble,
           ]}
         >
-          <Text style={styles.messageText}>{item.message}</Text>
+          <Text style={styles.messageText}>{item.message} </Text>
 
           {urls && urls.length > 0 && (
             <View style={styles.fileContainer}>
@@ -553,12 +553,7 @@ export default function ChatScreen() {
 
           {/* Timestamp and Status */}
           <View style={styles.timeStatusRow}>
-            <Text style={styles.timestamp}>
-              {new Date(item.timestamp).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </Text>
+            <Text style={styles.timestamp}> {new Date(item.timestamp).toLocaleTimeString([], {hour: "2-digit",minute: "2-digit",})} </Text>
 
             {isSender && (
               <View style={styles.statusIcon}>
@@ -579,6 +574,11 @@ export default function ChatScreen() {
         </View>
       </View>
     );
+  };
+
+  const handleOneTime = () => {
+    setonetime(prev => !prev);
+    console.log(onetime)
   };
 
   return (
@@ -641,7 +641,7 @@ export default function ChatScreen() {
             }}
           />
 
-          <TouchableOpacity onPress={() => {}} style={styles.iconButton}>
+          <TouchableOpacity onPress={handleOneTime} style={styles.iconButton}>
             <Image
               source={require("../../assets/images/onetime.png")}
               style={{ width: 28, height: 28, resizeMode: "contain", tintColor:'white' }}

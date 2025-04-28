@@ -491,7 +491,7 @@ export const GetUsersInCalls = async (): Promise<UserWithCallDetails[]> => {
       GROUP BY u.jid
     `);
 
-    console.log('Fetched users involved in calls with call details:', result);
+    // console.log('Fetched users involved in calls with call details:', result);
     return result;
   } catch (error) {
     console.error('Error fetching users from calls:', error);

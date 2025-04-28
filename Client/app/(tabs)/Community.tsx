@@ -70,7 +70,7 @@ export default function Communities() {
         return;
       }
       userData.current = user;
-      console.log(userData.current, "userData");
+      // console.log(userData.current, "userData");
     };
     initialize();
   }, []);

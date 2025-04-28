@@ -183,9 +183,7 @@ export default function Chat() {
                   <Text style={styles.chatName} numberOfLines={1}>
                     {item.name}
                   </Text>
-                  <Text style={styles.chatTime}>
-                    {formatTime(item.last_message_time)}
-                  </Text>
+                  <Text style={styles.chatTime}>{formatTime(item.last_message_time)} </Text>
                 </View>
 
                 <View style={styles.chatBottomRow}>
