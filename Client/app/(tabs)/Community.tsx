@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   Text,
   View,
@@ -22,8 +22,15 @@ import {
   getCommunityMembers,
   getNonCommunityMembers,
   addUsersToCommunity,
+  InsertMessageParams,
+  insertMessage,
+  updateMessageStatus,
 } from "@/Database/ChatQuery";
-import { CommunityItem, UserItem } from "@/types/ChatsType";
+import {
+  CommunityItem,
+  InsertCommunityMessageParams,
+  UserItem,
+} from "@/types/ChatsType";
 import {
   Menu,
   MenuOptions,
@@ -32,9 +39,11 @@ import {
 } from "react-native-popup-menu";
 import Modal from "react-native-modal";
 import Toast from "react-native-toast-message";
-import { deleteFiles } from "@/Services/Api";
+import { deleteFiles, sendFile } from "@/Services/Api";
 import showToast from "@/utils/ToastHandler";
 import * as ImagePicker from "expo-image-picker";
+import { useSocket } from "@/Context/SocketContext";
+import { getUser } from "@/Services/LocallyData";
 
 export default function Communities() {
   const [communities, setCommunities] = useState<CommunityItem[]>([]);
@@ -43,7 +52,8 @@ export default function Communities() {
   const [selectedCommunityIndex, setSelectedCommunityIndex] = useState<
     number | null
   >(null);
-
+  const userData = useRef<any | null>(null);
+  const { sendCommunityMessage } = useSocket();
   const [members, setMembers] = useState<UserItem[]>([]);
   const [nonMembers, setNonMembers] = useState<UserItem[]>([]);
   const [announcementVisible, setAnnouncementVisible] = useState(false);
@@ -52,6 +62,18 @@ export default function Communities() {
   }>({});
 
   const router = useRouter();
+  useEffect(() => {
+    const initialize = async () => {
+      const user = await getUser();
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+      userData.current = user;
+      console.log(userData.current, "userData");
+    };
+    initialize();
+  }, []);
 
   const loadCommunities = async () => {
     try {
@@ -229,23 +251,73 @@ export default function Communities() {
         setPickerVisible(false);
       }
     };
+    const handleSend = async () => {
+      if(!selectedCommunityIndex)return;
+      const fetchedMembers = await getCommunityMembers(communities[selectedCommunityIndex].id);
+      if ( fetchedMembers.length===0 || (!textInput.trim() && !media)) return;
 
-    const handleSend = () => {
-      if (textInput) {
-        console.log("Text Message:", textInput);
-      } else {
-        console.log("Text Message: Nothing to send!");
+      let uploadedUrls: string[] = [];
+
+      try {
+        // Step 1: Upload media once (if media exists)
+        if (media) {
+          const response = await sendFile([
+            {
+              uri: media.uri,
+              fileName: media.name,
+            },
+          ]);
+          if (response?.success) {
+            uploadedUrls = response.response; // Save the uploaded file URLs
+          } else {
+            console.error("File upload failed");
+            return;
+          }
+        }
+        // Step 2: Send message to all selected members
+        await Promise.all(
+          fetchedMembers.map(async (member: UserItem) => {
+            const messageData: InsertMessageParams = {
+              sender_jid: userData.current?._id,
+              receiver_jid: member.jid,
+              type: "user",
+              message: textInput.trim() || "",
+              fileUrls: uploadedUrls.length > 0 ? uploadedUrls : null,
+              fileTypes: media ? [media.type] : null,
+              timestamp: new Date().toISOString(),
+              isCurrentUserSender: true,
+              oneTime: false,
+              Sender_image: userData.current?.image || null,
+              Sender_name: userData.current?.username || null,
+            };
+
+            const messageId = await insertMessage(messageData);
+            // Now simply update the status (no need to upload again)
+            updateMessageStatus(messageId, "sent");
+          })
+        )
+        const addMessage: InsertCommunityMessageParams = {
+          sender_jid: userData.current?._id,
+          receiver_jids: fetchedMembers.map((member: any) => member.jid),
+          type: "user",
+          message: textInput.trim() || "",
+          fileUrls: uploadedUrls.length > 0 ? uploadedUrls : null,
+          fileTypes: media ? [media.type] : null,
+          timestamp: new Date().toISOString(),
+          isCurrentUserSender: true,
+          oneTime: false,
+          Sender_image: userData.current?.image || null,
+          Sender_name: userData.current?.username || null,
+        };
+        sendCommunityMessage(addMessage)
+      } catch (error) {
+        console.error("Failed to send message:", error);
+      } finally {
+        setTextInput("");
+        setMedia(null);
+        onClose();
+        setSelectedCommunityIndex(null)
       }
-
-      if (media) {
-        console.log("Media Selected:", media);
-      } else {
-        console.log("Media Selected: Nothing to send!");
-      }
-
-      setTextInput("");
-      setMedia(null);
-      onClose();
     };
 
     return (
@@ -267,10 +339,10 @@ export default function Communities() {
 
           {media && (
             <View style={announcementStyles.previewBox}>
-                <Image
-                  source={{ uri: media.uri }}
-                  style={announcementStyles.previewImage}
-                />
+              <Image
+                source={{ uri: media.uri }}
+                style={announcementStyles.previewImage}
+              />
             </View>
           )}
 
@@ -310,7 +382,10 @@ export default function Communities() {
   }
 
   const renderCommunity = ({ item, index }: { item: any; index: number }) => (
-    <TouchableOpacity onPress={() => setAnnouncementVisible(true)}>
+    <TouchableOpacity onPress={() => {
+      setAnnouncementVisible(true)
+      setSelectedCommunityIndex(index)
+    }}>
       <View style={styles.communityBox}>
         <View style={styles.communityHeader}>
           {item.image ? (

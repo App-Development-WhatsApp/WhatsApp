@@ -54,6 +54,7 @@ const CallsScreen = () => {
     setRefreshing(true);
     try {
       const data: UserWithCallDetails[] = await GetUsersInCalls();
+      console.log(data)
       setUsers(data); // Set users fetched from the database
     } catch (err) {
       console.error(err);

@@ -3,7 +3,7 @@ import { storeUser } from "./LocallyData";
 import { SaveUser } from "@/Database/ChatQuery";
 import { UserItem } from "@/types/ChatsType";
 
-export const BACK_URL = `http://10.10.48.135:5000`;
+export const BACK_URL = `http://10.10.50.209:5000`;
 export const API_URL = `${BACK_URL}/api/v1/users`;
 
 export const login = async (username: string, phoneNumber: string, file: string | null) => {

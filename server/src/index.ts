@@ -4,7 +4,7 @@ import { Message } from "./model/user.model";
 import { env } from "./utils/Env";
 import http from "http";
 import { Server, Socket } from "socket.io";
-import { InsertMessageParams } from "./Types/type";
+import { InsertCommunityMessageParams, InsertMessageParams } from "./Types/type";
 
 // Message type
 interface MessageType {
@@ -60,21 +60,38 @@ io.on("connection", (socket: Socket) => {
 
     socket.on('sendMessage', async (messageData: InsertMessageParams) => {
         const { sender_jid, receiver_jid } = messageData;
-        console.log(messageData);
-
-
+        // console.log(messageData);
         try {
-            // const savedMessage = await newMessage.save();
             const senderSocketId = onlineUsers.get(sender_jid);
             const receiverSocketId = onlineUsers.get(receiver_jid);
 
             console.log(messageData, "real time chatting", senderSocketId, receiverSocketId);
-
             if (receiverSocketId) {
-                console.log("Receiver is online, sending message:", messageData, " ----", receiverSocketId);
                 io.to(receiverSocketId).emit("receiveMessage", messageData);
             } else {
                 console.log("Receiver is offline, message saved as pending.");
+            }
+        } catch (error) {
+            console.error('Error sending message:', error);
+            socket.emit('error', 'Failed to send message');
+        }
+    });
+
+    socket.on('sendCommunityMessages', async (messageData: InsertCommunityMessageParams) => {
+        const { sender_jid, receiver_jids } = messageData;
+        console.log(messageData);
+        try {
+            // const savedMessage = await newMessage.save();
+            const senderSocketId = onlineUsers.get(sender_jid);
+            for(let receiverId in receiver_jids){
+                const receiverSocketId = onlineUsers.get(receiverId);
+                console.log(messageData, "real time chatting", senderSocketId, receiverSocketId);
+                if (receiverSocketId) {
+                    console.log("Receiver is online, sending message:", messageData, " ----", receiverSocketId);
+                    io.to(receiverSocketId).emit("receiveMessage", messageData);
+                } else {
+                    console.log("Receiver is offline, message saved as pending.");
+                }
             }
         } catch (error) {
             console.error('Error sending message:', error);
@@ -87,9 +104,10 @@ io.on("connection", (socket: Socket) => {
         const callerId=props.callerId
         const callerName=props.callerName
         const callerImage=props.callerImage
+        const receiverId=props.receiverId
         console.log(props.callerId,props.receiverId,"Receiver socket ID:", receiverSocketId);
         if (receiverSocketId) {
-            io.to(receiverSocketId).emit("incomingCall", { callerId, callerName, callerImage });
+            io.to(receiverSocketId).emit("incomingCall", { callerId, callerName, callerImage, receiverId });
         } else {
             console.log("Receiver is offline, call not sent.");
         }
@@ -121,11 +139,11 @@ io.on("connection", (socket: Socket) => {
         }
     });
 
-    socket.on("cutCall", (callerId: string, receiverId: string) => {
-        const receiverSocketId = onlineUsers.get(receiverId);
+    socket.on("CallEnded", (cuttedBy: string, cuttedTo: string,time:string) => {
+        const receiverSocketId = onlineUsers.get(cuttedTo);
         if (receiverSocketId) {
-            io.to(receiverSocketId).emit("cutCall");
-            console.log(`Call cut from caller ${callerId}`);
+            io.to(receiverSocketId).emit("CallEnded",time);
+            console.log(`Call cut from caller ${cuttedBy}`);
         }
     });
 

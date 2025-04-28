@@ -2,11 +2,10 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { Request, Response } from 'express';
 import { ApiError } from "../utils/APIError";
 import { ApiResponse } from "../utils/APIResponse";
-//  this user can interact with mongodb because it has made a connection
 import { User } from "../model/user.model";
 import { deleteFileFromCloudinary, uploadOnCloudinary, } from "../utils/cloudinary";
-
-
+import path from 'path';
+import { splitAndUploadVideo } from "../utils/Ffmpeg";
 
 export const registerUser = asyncHandler(async (req: any, res: Response) => {
     const { username, phoneNumber } = req.body;
@@ -53,7 +52,6 @@ export const registerUser = asyncHandler(async (req: any, res: Response) => {
         },
     ))
 });
-
 
 export const UploadFiles = asyncHandler(async (req: any, res: Response) => {
     try {
@@ -127,8 +125,6 @@ export const DeleteFiles = asyncHandler(async (req: any, res: Response) => {
     }
   });
   
-
-
 export const GetAllUsers = asyncHandler(async (req, res) => {
     const {id}=req.body
     const users = await User.find({}, "username image phoneNumber _id");
@@ -160,3 +156,49 @@ export const getUserWithId = asyncHandler(async (req: Request, res: Response) =>
     }
 });
 
+export const demoroute = asyncHandler(async (req: any, res: Response) => {
+    try {
+        console.log('Request Files:', req.body);
+
+        if (!req.files || (!req.files.files && !req.files.file)) {
+            return res.status(400).json({ success: false, message: 'No files uploaded' });
+        }
+
+        const filesArray = req.files.files || req.files.file;
+        const uploadedFiles = Array.isArray(filesArray) ? filesArray : [filesArray];
+
+        console.log('Uploaded Files:', uploadedFiles);
+        const uploadedUrls: string[] = [];
+
+        for (const file of uploadedFiles) {
+            console.log('Processing File:', file.name);
+
+            const filePath = file.tempFilePath;
+            const fileExt = path.extname(file.name).toLowerCase();
+
+            const isVideo = ['.mp4', '.mov', '.avi', '.mkv'].includes(fileExt);
+
+            if (isVideo) {
+                const videoUrls = await splitAndUploadVideo(filePath, file.name, uploadOnCloudinary);
+                uploadedUrls.push(...videoUrls);
+            } else {
+                const cloudinaryResponse = await uploadOnCloudinary(filePath, file.name);
+                if (cloudinaryResponse) {
+                    uploadedUrls.push(cloudinaryResponse.secure_url);
+                }
+            }
+        }
+
+        console.log('Uploaded URLs:', uploadedUrls);
+
+        return res.json(new ApiResponse(
+            200,
+            'Files uploaded successfully',
+            { data: uploadedUrls }
+        ));
+
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});

@@ -1,54 +1,61 @@
-import ffmpeg from "fluent-ffmpeg";
-import fs from "fs";
-import path from "path";
+import ffmpeg from 'fluent-ffmpeg';
+import path from 'path';
+import fs from 'fs';
 
-export const getVideoDuration = (filePath: string): Promise<number> => {
-  return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(filePath, (err: Error, metadata: any) => {
-      if (err) return reject(err);
-      resolve(metadata.format.duration || 0);
-    });
-  });
-};
+/**
+ * Splits a video into chunks of given duration (default 30s) and uploads them.
+ * @param filePath Path to the uploaded video
+ * @param fileName Name of the uploaded video
+ * @param uploadFunction Function to upload a chunk (e.g., to Cloudinary)
+ * @param chunkDuration Duration of each chunk in seconds (default 30)
+ * @returns Array of URLs of uploaded chunks
+ */
+export const splitAndUploadVideo = async (
+    filePath: string,
+    fileName: string,
+    uploadFunction: (filePath: string, fileName: string) => Promise<any>,
+    chunkDuration: number = 30
+): Promise<string[]> => {
+    const uploadedUrls: string[] = [];
+    const fileExt = path.extname(fileName).toLowerCase();
+    const baseFileName = path.basename(fileName, fileExt);
+    const outputDir = path.join(__dirname, '../../uploads/chunks');
 
-// Function to split video into chunks of 20s after trimming based on start and end time
-export const splitVideo = async(filePath: string, startTime: number, endTime: number, segmentLength = 20): Promise<string[]> => {
-  return new Promise((resolve, reject) => {
-    const outputDir = path.join("temp_chunks", path.basename(filePath, path.extname(filePath)));
-    fs.mkdirSync(outputDir, { recursive: true });
+    if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+    }
 
-    const duration = endTime - startTime;
-    const trimmedVideoPath = path.join(outputDir, 'trimmed.mp4');
+    console.log('Splitting video into chunks...');
 
-    // Trim the video
-    ffmpeg(filePath)
-      .setStartTime(startTime)
-      .setDuration(duration)
-      .output(trimmedVideoPath)
-      .on('end', async () => {
-        // Check if duration after trimming is greater than 20 seconds
-        if (duration > segmentLength) {
-          // Split into 20-second chunks if video length is more than 20 seconds
-          ffmpeg(trimmedVideoPath)
-            .output(path.join(outputDir, 'chunk_%03d.mp4'))
+    await new Promise((resolve, reject) => {
+        ffmpeg(filePath)
+            .format('segment')
             .outputOptions([
-              `-c copy`,
-              `-map 0`,
-              `-segment_time ${segmentLength}`,
-              `-f segment`
+                `-segment_time ${chunkDuration}`,
+                '-c copy'
             ])
-            .on('end', async () => {
-              const chunkFiles = fs.readdirSync(outputDir).map(file => path.join(outputDir, file));
-              resolve(chunkFiles);
+            .output(path.join(outputDir, `${baseFileName}_chunk_%03d${fileExt}`))
+            .on('end', () => {
+                console.log('Splitting done.');
+                resolve(null);
             })
-            .on('error', reject)
+            .on('error', (err) => {
+                console.error('Error while splitting video:', err);
+                reject(err);
+            })
             .run();
-        } else {
-          // If the video is less than 20 seconds, return the trimmed video as a single chunk
-          resolve([trimmedVideoPath]);
+    });
+
+    const chunkFiles = fs.readdirSync(outputDir)
+        .filter(f => f.startsWith(baseFileName) && f.endsWith(fileExt));
+
+    for (const chunkFile of chunkFiles) {
+        const chunkPath = path.join(outputDir, chunkFile);
+        const uploadResponse = await uploadFunction(chunkPath, chunkFile);
+        if (uploadResponse) {
+            uploadedUrls.push(uploadResponse.secure_url);
         }
-      })
-      .on('error', reject)
-      .run();
-  });
+    }
+
+    return uploadedUrls;
 };

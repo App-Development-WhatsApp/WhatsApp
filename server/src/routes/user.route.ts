@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerUser,UploadFiles,GetAllUsers,getUserWithId, DeleteFiles } from "../controllers/user.controller";
+import { registerUser,UploadFiles,GetAllUsers,getUserWithId, DeleteFiles,demoroute } from "../controllers/user.controller";
 
 
 
@@ -12,6 +12,7 @@ router.route("/getAllUsers").get(GetAllUsers);
 router.route("/sendfile").post(UploadFiles)
 router.route("/deletefile").post(DeleteFiles)
 router.route("/getUserById/:id").post(getUserWithId);
+router.route("/demoroute").post(demoroute);
 
 
 export default router;
