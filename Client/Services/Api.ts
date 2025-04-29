@@ -3,7 +3,7 @@ import { storeUser } from "./LocallyData";
 import { SaveUser } from "@/Database/ChatQuery";
 import { UserItem } from "@/types/ChatsType";
 
-export const BACK_URL = `http://10.10.50.209:5000`;
+export const BACK_URL = `http://10.10.15.92:5000`;
 export const API_URL = `${BACK_URL}/api/v1/users`;
 
 export const login = async (username: string, phoneNumber: string, file: string | null) => {
@@ -201,4 +201,63 @@ export const deleteFiles = async (selectedFiles: { uri: string }[]) => {
     }
   };
   
+export const Upload_Status = async (formData: FormData) => {
+    try {
+      const response = await axios.post(`${API_URL}/uploadStatus`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
 
+      console.log(response.data)
+  
+      if (response.data.files && response.data.success) {
+        return {
+          success: true,
+          message: "Status uploaded successfully",
+          response: response.data.files,
+        };
+      } else {
+        return {
+          success: false,
+          message: response.data.message || "Failed to upload status",
+          response: null,
+        };
+      }
+    } catch (error: any) {
+      console.error("Error uploading status:", error);
+      handleError(error);
+      return {
+        success: false,
+        message: error.message || "Unexpected error",
+        response: null,
+      };
+    }
+  };
+  
+export const Get_Statuses = async (userIds: string[]) => {
+    try {
+      const response = await axios.post(`${API_URL}/status/get`, { userIds });
+      if (response.data.success && response.data.statuses) {
+        return {
+          success: true,
+          message: "Statuses fetched successfully",
+          statuses: response.data.statuses,
+        };
+      } else {
+        return {
+          success: false,
+          message: response.data.message || "Failed to fetch statuses",
+          statuses: [],
+        };
+      }
+    } catch (error: any) {
+      console.error("Error fetching statuses:", error);
+      handleError(error);
+      return {
+        success: false,
+        message: error.message || "Unexpected error",
+        statuses: [],
+      };
+    }
+  };

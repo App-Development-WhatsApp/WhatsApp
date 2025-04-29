@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,39 +7,74 @@ import {
   TouchableOpacity,
   ScrollView,
   Modal,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import { useRouter } from "expo-router";
+import { getAllUsers } from "@/Database/ChatQuery";
+import { Get_Statuses } from "@/Services/Api";
 
 const statuses = [
-  { id: '1', name: 'Add status', avatar: 'https://via.placeholder.com/150', isAdd: true },
+  {
+    id: "1",
+    name: "Add status",
+    avatar: "https://via.placeholder.com/150",
+    isAdd: true,
+  },
 ];
 
 const channels = [
   {
-    id: '1',
-    name: 'Computer Science',
-    message: 'Join me live for todays teaching on...',
-    date: '06/05/2024',
+    id: "1",
+    name: "Computer Science",
+    message: "Join me live for todays teaching on...",
+    date: "06/05/2024",
   },
   {
-    id: '2',
-    name: 'EEE',
-    message: 'Atlanta this',
-    date: '03/05/2024',
+    id: "2",
+    name: "EEE",
+    message: "Atlanta this",
+    date: "03/05/2024",
   },
   {
-    id: '3',
-    name: 'ECE',
-    message: 'Anyone else watching this weekend?',
-    date: '01/05/2024',
+    id: "3",
+    name: "ECE",
+    message: "Anyone else watching this weekend?",
+    date: "01/05/2024",
   },
 ];
 
 export default function UpdatesScreen() {
   const [showPicker, setShowPicker] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const fetchStatuses = async () => {
+      try {
+        // Fetch all users (or just the needed user data)
+        const Users = await getAllUsers(); // Ensure this returns a list or object with user data
+        console.log(Users)
+        // If Users has an array of IDs or user objects, extract their jids
+        if(Users.length!==0){
+
+          const userIds = Users.map((user) => user.jid);
+          
+          // Fetch statuses based on those user IDs
+          const result = await Get_Statuses(userIds);
+          
+          if (result.success) {
+            console.log("Statuses:", result.statuses);
+          } else {
+            console.log("Failed to fetch statuses:", result.message);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching statuses:", error);
+      }
+    };
+
+    fetchStatuses(); // Call the function to fetch statuses
+  }, []);
 
   const openCamera = async () => {
     const result = await ImagePicker.launchCameraAsync({
@@ -55,7 +90,7 @@ export default function UpdatesScreen() {
       const type = asset.type;
 
       router.push({
-        pathname: '/status/uploadstatus',
+        pathname: "/status/uploadstatus",
         params: { uri: encodeURIComponent(uri), type },
       });
     }
@@ -73,10 +108,10 @@ export default function UpdatesScreen() {
       const asset = result.assets[0];
       const uri = asset.uri;
       const type = asset.type;
-      console.log('image:',uri)
+      console.log("image:", uri);
 
       router.push({
-        pathname: '/status/uploadstatus',
+        pathname: "/status/uploadstatus",
         params: { uri: encodeURIComponent(uri), type },
       });
       console.log(uri, type);
@@ -110,7 +145,7 @@ export default function UpdatesScreen() {
   const renderChannel = ({ item }: { item: any }) => (
     <TouchableOpacity key={item.id} style={styles.channelItem}>
       <Image
-        source={{ uri: 'https://via.placeholder.com/150' }}
+        source={{ uri: "https://via.placeholder.com/150" }}
         style={styles.channelAvatar}
       />
       <View style={styles.channelContent}>
@@ -129,10 +164,15 @@ export default function UpdatesScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Text style={styles.sectionLabel}>Status</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginBottom: 10 }}
+        >
           {statuses.map((item) => (
             <View key={item.id}>{renderStatus({ item })}</View>
           ))}
+
         </ScrollView>
 
         <Text style={styles.sectionLabel}>Channels</Text>
@@ -164,7 +204,10 @@ export default function UpdatesScreen() {
               <Ionicons name="image" size={20} color="#00c853" />
               <Text style={styles.modalButtonText}>Upload from Gallery</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => setShowPicker(false)}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setShowPicker(false)}
+            >
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
           </View>
@@ -177,49 +220,49 @@ export default function UpdatesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#25292e',
+    backgroundColor: "#25292e",
     paddingHorizontal: 16,
   },
   sectionLabel: {
-    color: '#bbb',
+    color: "#bbb",
     fontSize: 16,
     marginTop: 10,
     marginBottom: 8,
   },
   statusItem: {
-    alignItems: 'center',
+    alignItems: "center",
     marginRight: 16,
     width: 60,
     height: 50,
     marginBottom: 25,
   },
   statusAvatarWrapper: {
-    position: 'relative',
+    position: "relative",
   },
   statusAvatar: {
     width: 50,
     height: 50,
     borderRadius: 25,
     borderWidth: 1,
-    borderColor: 'gray',
+    borderColor: "gray",
   },
   addIcon: {
-    position: 'absolute',
+    position: "absolute",
     right: -6,
     bottom: -6,
-    backgroundColor: '#121212',
+    backgroundColor: "#121212",
     borderRadius: 10,
   },
   statusName: {
-    color: 'white',
+    color: "white",
     fontSize: 12,
     marginTop: 4,
   },
   channelItem: {
     height: 70,
-    backgroundColor: '#1e1e1e',
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: "#1e1e1e",
+    flexDirection: "row",
+    alignItems: "center",
     marginVertical: 4,
     borderWidth: 1,
     borderRadius: 10,
@@ -230,73 +273,73 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: 21,
     marginRight: 12,
-    backgroundColor: 'white',
+    backgroundColor: "white",
   },
   channelContent: {
     flex: 1,
   },
   channelName: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: "white",
+    fontWeight: "bold",
     fontSize: 14,
   },
   channelMessage: {
-    color: '#aaa',
+    color: "#aaa",
     fontSize: 13,
   },
   channelRight: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   channelDate: {
-    color: '#00ff6a',
+    color: "#00ff6a",
     fontSize: 12,
   },
   fab: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 24,
     right: 24,
-    backgroundColor: '#00c853',
+    backgroundColor: "#00c853",
     borderRadius: 28,
     width: 56,
     height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     elevation: 5,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
   modal: {
-    backgroundColor: '#1e1e1e',
+    backgroundColor: "#1e1e1e",
     padding: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
   modalTitle: {
-    color: 'white',
+    color: "white",
     fontSize: 18,
     marginBottom: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   modalButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 12,
   },
   modalButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
     marginLeft: 12,
   },
   cancelButton: {
     marginTop: 10,
     paddingVertical: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   cancelButtonText: {
-    color: '#ff5252',
+    color: "#ff5252",
     fontSize: 16,
   },
 });

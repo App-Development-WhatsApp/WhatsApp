@@ -8,9 +8,15 @@ import {
   MenuOption,
   MenuTrigger,
 } from 'react-native-popup-menu';
+import { handleLogoutofApp } from '@/Database/ChatQuery';
 
 const MenuDropdown = () => {
   const router = useRouter();
+
+  const handleLogout=async()=>{
+    await handleLogoutofApp();
+    router.replace('/login')
+  }
 
   return (
     <Menu>
@@ -33,7 +39,9 @@ const MenuDropdown = () => {
           </View>
         </MenuOption>
 
-        <MenuOption onSelect={() => console.log('Logout pressed')}>
+        <MenuOption onSelect={() => {
+          handleLogout();
+        }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', padding: 3, gap: 10 }}>
             <Ionicons name="log-out-outline" size={18} />
             <Text style={{ fontSize: 16 }}>Logout</Text>

@@ -1,12 +1,25 @@
+import { SaveUser } from '@/Database/ChatQuery';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const storeUser = async (user:any) => {
+export const storeUser = async (user: any) => {
   try {
     await AsyncStorage.setItem('user', JSON.stringify(user));
+
+    const UserData = await getUser();
+    if (UserData) {
+      await SaveUser({
+        id:1,
+        jid: UserData._id,
+        name: UserData.username,
+        image: UserData.image,
+        phone: UserData.phoneNumber,
+      });
+    }
   } catch (error) {
     console.error('Error storing user data:', error);
   }
 };
+
 
 export const getUser = async () => {
   try {

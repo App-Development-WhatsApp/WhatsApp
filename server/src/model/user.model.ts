@@ -4,7 +4,7 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 interface IMessage extends Document {
   sender: mongoose.Types.ObjectId;
   text: string;
-  files: string[]; // or more detailed structure if needed
+  files: string[];
   time: Date;
 }
 
@@ -12,7 +12,7 @@ const messageSchema = new Schema<IMessage>(
   {
     sender: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     text: { type: String, required: true },
-    files: [{ type: String }], // If you want to store file names or URLs
+    files: [{ type: String }], 
     time: { type: Date, default: Date.now },
   },
   { timestamps: true }
@@ -31,6 +31,7 @@ interface IUser extends Document {
   phoneNumber: string;
   communities: mongoose.Types.ObjectId[];
   messages: mongoose.Types.ObjectId[];
+  statuses: mongoose.Types.ObjectId[];
 }
 
 const userSchema = new Schema<IUser>(
@@ -41,6 +42,7 @@ const userSchema = new Schema<IUser>(
     phoneNumber: { type: String, required: true, unique: true },
     communities: [{ type: mongoose.Schema.Types.ObjectId, ref: "Community" }],
     messages: [{ type: mongoose.Schema.Types.ObjectId, ref: "Message" }],
+    statuses: [{ type: mongoose.Schema.Types.ObjectId, ref: "Status" }], // <-- new
   },
   { timestamps: true }
 );

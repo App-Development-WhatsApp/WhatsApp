@@ -60,7 +60,7 @@ export default function ChatScreen() {
   const [mediaViewerVisible, setMediaViewerVisible] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<{
     fileUrl: string;
-    fileType: "image" | "video";
+    fileType: "image" | "video" | "pdf";
   } | null>(null);
 
   useLayoutEffect(() => {
@@ -267,7 +267,7 @@ export default function ChatScreen() {
         file_types: JSON.stringify(selectedFileTypes) || "",
         status: "sending",
         timestamp: new Date().toISOString(),
-        oneTime: onetime,
+        oneTime: selectedFiles.length === 1 && onetime,
         Other_image: userData.current?.image || null,
         Other_name: userData.current?.username || null,
       };
@@ -284,7 +284,7 @@ export default function ChatScreen() {
           urls = response.response;
           messageData.fileUrls = urls;
           sendMessage(messageData);
-          updateMessageStatus(messageId, "sent",urls);
+          updateMessageStatus(messageId, "sent", urls);
           console.log(messageId, "coming");
           setMessages((prev) =>
             prev.map((msg) =>
@@ -455,7 +455,7 @@ export default function ChatScreen() {
     const isSender = item.sender_jid === userData.current?._id;
     const urls = JSON.parse(item.file_urls || "[]");
     const fileTypes = JSON.parse(item.file_types || "[]");
-    console.log(urls)
+    console.log(urls);
 
     const handleOneTimeView = async () => {
       console.log("One-time view clicked:", item.id);
@@ -519,7 +519,7 @@ export default function ChatScreen() {
                         onPress={() => {
                           setSelectedMedia({ fileUrl, fileType: "image" });
                           setMediaViewerVisible(true);
-                          console.log(fileUrl)
+                          console.log(fileUrl);
                         }}
                       >
                         <Image
@@ -551,7 +551,10 @@ export default function ChatScreen() {
                       <TouchableOpacity
                         key={index}
                         style={styles.documentBox}
-                        onPress={() => Linking.openURL(fileUrl)}
+                        onPress={() => {
+                          setSelectedMedia({ fileUrl, fileType: "pdf" });
+                          setMediaViewerVisible(true);
+                        }}
                       >
                         <FontAwesome
                           name="file-pdf-o"
@@ -678,17 +681,19 @@ export default function ChatScreen() {
             }}
           />
 
-          <TouchableOpacity onPress={handleOneTime} style={styles.iconButton}>
-            <Image
-              source={require("../../assets/images/onetime.png")}
-              style={{
-                width: 28,
-                height: 28,
-                resizeMode: "contain",
-                tintColor: "white",
-              }}
-            />
-          </TouchableOpacity>
+          {selectedFiles.length === 1 && (
+            <TouchableOpacity onPress={handleOneTime} style={styles.iconButton}>
+              <Image
+                source={require("../../assets/images/onetime.png")}
+                style={{
+                  width: 28,
+                  height: 28,
+                  resizeMode: "contain",
+                  tintColor: "white",
+                }}
+              />
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             onPress={() => setMediaModalVisible(true)}

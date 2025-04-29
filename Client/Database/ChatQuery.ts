@@ -1,5 +1,6 @@
 import { ChatItem, UserItem, CommunityItem, UserWithCallDetails, MessageItem } from "@/types/ChatsType";
 import { getDB } from "./ChatDatabase";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export type InsertMessageParams = {
   sender_jid: string;
@@ -790,5 +791,35 @@ export const deleteListAndMembers = async (listId: number) => {
   } catch (error) {
     await db.execAsync('ROLLBACK;');
     console.error('Error deleting list and members:', error);
+  }
+};
+
+
+export const handleLogoutofApp = async () => {
+  try {
+    // Get DB instance
+    const db = await getDB();
+
+    // Clear all tables
+    await db.execAsync(`
+      DELETE FROM users;
+      DELETE FROM groups;
+      DELETE FROM group_members;
+      DELETE FROM messages;
+      DELETE FROM chat_list;
+      DELETE FROM calls;
+      DELETE FROM communities;
+      DELETE FROM community_members;
+      DELETE FROM lists;
+      DELETE FROM list_members;
+    `);
+
+    // Clear userId from AsyncStorage
+    await AsyncStorage.removeItem('user');
+
+    console.log('Logout successful: All data cleared.');
+    // Navigate to login screen or perform other logout tasks here
+  } catch (error) {
+    console.error('Logout failed:', error);
   }
 };

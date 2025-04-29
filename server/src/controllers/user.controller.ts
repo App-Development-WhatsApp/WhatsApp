@@ -6,7 +6,7 @@ import { User } from "../model/user.model";
 import { deleteFileFromCloudinary, uploadOnCloudinary, } from "../utils/cloudinary";
 import path from 'path';
 import { splitAndUploadVideo } from "../utils/Ffmpeg";
-
+import { Status } from "../model/status.model"; // adjust path as needed
 export const registerUser = asyncHandler(async (req: any, res: Response) => {
     const { username, phoneNumber } = req.body;
 
@@ -202,3 +202,128 @@ export const demoroute = asyncHandler(async (req: any, res: Response) => {
         res.status(500).json({ message: 'Server error' });
     }
 });
+
+
+export const uploadStatus = asyncHandler(async (req: any, res: Response) => {
+    try {
+      const { id } = req.body;
+      const files = req.files?.media;
+  
+      if (!id || !files) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID and media files are required.',
+        });
+      }
+  
+      // Build metaData array from flattened keys like meta[0][type]
+      const metaData: any[] = [];
+      const body = req.body;
+  
+      Object.keys(body).forEach((key) => {
+        const match = key.match(/^meta\[(\d+)]\[(\w+)]$/);
+        if (match) {
+          const index = parseInt(match[1]);
+          const field = match[2];
+          if (!metaData[index]) metaData[index] = {};
+          metaData[index][field] = body[key];
+        }
+      });
+  
+      const uploadedFiles: any[] = [];
+      const createdStatusIds: any[] = [];
+  
+      const uploadFile = async (file: any, metaInfo: any) => {
+        const localPath = file.tempFilePath || file.path;
+        if (!localPath) throw new Error('Temporary file path not found.');
+  
+        const fileExt = file.name?.toLowerCase().slice(file.name.lastIndexOf('.')) || '';
+        const isVideo = ['.mp4', '.mov', '.avi', '.mkv'].includes(fileExt);
+  
+        if (isVideo) {
+          const chunks = await splitAndUploadVideo(localPath, file.name, uploadOnCloudinary);
+  
+          for (const url of chunks) {
+            const newStatus = await Status.create({
+              user: id,
+              type: metaInfo.type || 'video',
+              caption: metaInfo.caption || '',
+              url,
+              timestamp: Date.now(),
+              start: Number(metaInfo.start || 0),
+              end: Number(metaInfo.end || 1000),
+              duration: Number(metaInfo.duration || 1000),
+            });
+  
+            createdStatusIds.push(newStatus._id);
+            uploadedFiles.push(newStatus);
+          }
+        } else {
+          const cloudinaryResult = await uploadOnCloudinary(localPath);
+          if (!cloudinaryResult?.secure_url) throw new Error('Cloudinary upload failed');
+          const newStatus = await Status.create({
+              user: id,
+              type: metaInfo.type || 'image',
+              caption: metaInfo.caption || '',
+              url: cloudinaryResult.secure_url,
+              timestamp: Date.now(),
+            });
+            console.log(metaInfo,"-------",newStatus)
+  
+          createdStatusIds.push(newStatus._id);
+          uploadedFiles.push(newStatus);
+        }
+      };
+  
+      if (Array.isArray(files)) {
+        for (let i = 0; i < files.length; i++) {
+          await uploadFile(files[i], metaData[i] || {});
+        }
+      } else {
+        await uploadFile(files, metaData[0] || {});
+      }
+  
+      // Push all created status IDs to the user document
+      await User.findByIdAndUpdate(id, {
+        $push: { statuses: { $each: createdStatusIds } },
+      });
+  
+      return res.status(200).json({
+        success: true,
+        message: 'Files uploaded and statuses saved successfully!',
+        files: uploadedFiles,
+      });
+  
+    } catch (error: any) {
+      console.error('Upload Error:', error.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Internal Server Error',
+      });
+    }
+  });
+  
+  
+  export const getStatuses = asyncHandler(async (req: Request, res: Response) => {
+    const { userIds } = req.body;
+  
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "userIds must be a non-empty array.",
+      });
+    }
+  
+    const statuses = await Status.find({
+      user: { $in: userIds },
+      timestamp: { $gte: Date.now() - 24 * 60 * 60 * 1000 }, // last 24 hours
+    })
+      .sort({ timestamp: -1 })
+      .populate("user", "username image");
+  
+    res.status(200).json({
+      success: true,
+      statuses,
+    });
+  });
+  
